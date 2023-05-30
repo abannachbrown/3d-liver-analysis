@@ -1,0 +1,100 @@
+---
+title: "Analysis"
+author: "ABB"
+date: "2023-05-30"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+
+# green is the reconciled one
+# (NOT to be answered by REVIEWER) Has the study been reconciled?_cb623db2-5f5e-4676-9497-f22d4d58fd02 == YES is reconciled
+
+```
+
+## Diagram of analysis to be carried out
+
+https://lucid.app/lucidchart/07544fa2-2781-40f0-b03b-d3d3595d9443/edit?viewport_loc=-325%2C-1822%2C3711%2C2979%2C0_0&invitationId=inv_b89952a6-b78e-49f7-9d45-e64aa7af5638 
+
+for simple diagrams, a 
+
+for complex connections - sankey diagram - for the link between printing methods + printing model --> link to the bioink type (+ origin)?
+
+first things first, to give numbers of studies that report e.g. A or B
+
+## Printing Techniques 
+
+Give an overview of the different printing techniques, 
+- method
+- printer model
+- printer source
+- forms 
+- software 
+
+
+
+```{r printing-techniques, echo = TRUE}
+
+
+
+```
+
+## BioInks
+
+Give an overview of the different inks used with these techniques. 
+- type
+- origin
+- additives
+- density
+
+```{r printing-inks, echo=TRUE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+## Liver Cells
+And then it is liver specific variables. 
+- main type of liver cells 
+- info about liver cells
+
+AN - Main type of liver cells
+
+if comments from reconciled - print out for all to see. 
+
+if any of reviewer comments say HepG2 
+
+```{r liver-cells}
+
+
+
+```
+
+
+## Cells 
+What types of included cells? 
+- human, animal, both
+```{r}
+
+```
+
+
+## Culture Conditions
+What tpye of culture conditions? 
+Liver Markers- what measurements? 
+```{r}
+
+```
+
+
+## Quality
+Quality Assays, storage conditions 
+```{r}
+
+```
+
+
