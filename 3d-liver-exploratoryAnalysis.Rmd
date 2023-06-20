@@ -1,7 +1,7 @@
 ---
 title: "Analysis"
 author: "ABB"
-date: "2023-05-30"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: word_document
 ---
 
@@ -25,6 +25,7 @@ data <- data[-c(1:2), ]
 library(janitor)
 
 clean_names(data)
+# remove brackets so can search by numbers
 colnames(data) <-  gsub("\\(|)","",colnames(data))
 
 
@@ -32,7 +33,7 @@ library(tidyverse)
 ## get only reconciled
 reconciled <- data %>% subset(data$`NOT to be answered by REVIEWER Has the study been reconciled?_cb623db2-5f5e-4676-9497-f22d4d58fd02_Answer` == "Yes") 
 
-# number of reconciled
+# check the number of reconciled studies and confirm with project lead 
 nrow(reconciled)
 # 63
 
@@ -49,7 +50,7 @@ reconciled[cols] <- lapply(reconciled[cols], factor)
 
 <!-- https://lucid.app/lucidchart/07544fa2-2781-40f0-b03b-d3d3595d9443/edit?viewport_loc=-325%2C-1822%2C3711%2C2979%2C0_0&invitationId=inv_b89952a6-b78e-49f7-9d45-e64aa7af5638  -->
 
-for simple diagrams, a
+for simple diagrams, 
 
 for complex connections - sankey diagram - for the link between printing methods + printing model with a link to the bioink type (+ origin)?
 
@@ -74,10 +75,15 @@ table(reconciled$`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9
         #           Other       Stereolithography                 Unclear 
         #               9                       2                      10
 
+# proportions instead of absolute value of number of studies 
+prop.table(table(reconciled$`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`))
 
 barplot(table(reconciled$`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`), ylab = "Number of studies", cex.names=.5 , col = "green")
 
+
 ```
+
+
 ## Reporting of Printer Model 
 ```{r printer-model}
 
@@ -87,9 +93,13 @@ table(reconciled$`4.1.1 Do the authors report the printer model name/number?_a3e
          # Not reported Not reported|Reported              Reported 
          #           22                     1                    4
 
+both_print <- reconciled %>% subset(`4.1.1 Do the authors report the printer model name/number?_a3e72486-56d3-4154-a45f-9fb87b8612fc_Answer` == "Not reported|Reported")
+
 barplot(table(reconciled$`4.1.1 Do the authors report the printer model name/number?_a3e72486-56d3-4154-a45f-9fb87b8612fc_Answer`), ylab = "Number of studies")
 
 ```
+
+
 ## Printer Source 
 ```{r printer-source}
 
@@ -110,9 +120,13 @@ barplot(table(reconciled$`4.1.2 What is the source of the printer?_102ba965-5234
 ```{r printer-forms}
 
 #### Reporting of Printer forms
+# split is based on the ink
 
 table(reconciled$`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`)
 # clean response
+# combo ; 
+# pipe should be merged 
+
 
         #                Grid                  Grid;Other 
         #                  19                           1 
@@ -143,12 +157,16 @@ barplot(table(reconciled$`4.1.5 Do the authors report the name of the 3D modelli
 
 ## Slicing Software
 
+# - since the review started, many cases - not applicable 
+# merge NA with No and merge No|No with NO
 table(reconciled$`4.1.6 Do the authors report the name of slicing software?_bc07fc45-10aa-441f-9bdf-b32f5037389f_Answer`)
             # No          No|No Not applicable            Yes 
             # 53              1              1              8 
 barplot(table(reconciled$`4.1.6 Do the authors report the name of slicing software?_bc07fc45-10aa-441f-9bdf-b32f5037389f_Answer`), ylab = "Number of studies", cex.names=.5, col = "green")
 
 ```
+
+
 
 # BioInks
 
@@ -209,7 +227,6 @@ table(reconciled$`4.1.3.4 Is the cell density of the bioinkÂ provided in the s
 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
 
 
@@ -218,7 +235,7 @@ And then it is liver specific variables.
 - main type of liver cells 
 - info about liver cells
 
-AN - Main type of liver cells
+AND - Main type of liver cells
 
 if comments from reconciled - print out for all to see. 
 
@@ -252,6 +269,9 @@ table(reconciled$`2.2.1.1 If co-cultured, what type of non-parenchymal cells are
 # Meta-data for Liver cells
 
 table(reconciled$`2.4 Which kind of meta data is available for the used liver cells?_2868ee50-2c4c-47e8-a040-427e4f882632_Answer`)
+## common cell line; None should get merged with Common Cell line option 
+# re-shape data to can number of bits of info? 
+
 
 
 # LIVER Model
@@ -292,6 +312,19 @@ barplot(table(reconciled$`2.1 What is the origin of the cells in the liver model
 ```
 
 
+
+
+## If human, is it Xeno-free? 
+```{r}
+table(reconciled$`2.1.1 If human, is the described liver model xeno-free/animal-free?_7b2396a2-218d-462b-b71f-0c68bc5e9911_Answer`)
+
+
+barplot(table(reconciled$`2.1.1 If human, is the described liver model xeno-free/animal-free?_7b2396a2-218d-462b-b71f-0c68bc5e9911_Answer`)
+, ylab = "Number of studies", cex.names=.7, col = "pink")
+```
+
+
+
 # Culture Conditions
 What type of culture conditions? 
 Liver Markers- what measurements? 
@@ -307,6 +340,8 @@ barplot(table(reconciled$`5.2 How long were the liver models cultured after prin
 
 
 ```
+
+
 
 # Liver Markers
 ```{r liver-marker}
@@ -346,7 +381,11 @@ barplot(table(reconciled$`6.3 Have agonists of the receptors for the inducibilit
 
 
 # Quality
-Quality Assays, storage conditions 
+- Quality Assays
+- storage conditions
+- application
+- time
+
 ## Does the study describe quality assurance? 
 ```{r quality}
 
@@ -356,13 +395,75 @@ table(reconciled$`5.3 Does the study describe quality-assuring assays for the pr
 #  63
 
 ```
-## Which assays were performed? 
 
+
+## Which assays were performed? 
 ```{r quality-assays}
+library(tidyverse)
 ### messy - needs cleaning
 table(reconciled$`5.3.1 Which assays were performed to assure the quality of the liver model?_8a415412-28c6-48ff-840a-538ea69a068f_Answer`)
+# needs cleaning 
 
 
+assays <- separate_rows(reconciled, `5.3.1 Which assays were performed to assure the quality of the liver model?_8a415412-28c6-48ff-840a-538ea69a068f_Answer` ,sep=";")
+
+
+assays_heat <- assays[,c(1, 91)]
+
+colnames(assays_heat) <- c("study_ID", "assay")
+
+
+new <- assays_heat %>% group_by(assay) %>% summarize(n_unique = length(unique(study_ID)))
+
+new$n_unique <- as.numeric(new$n_unique)
+
+sort_new <- new %>% arrange(desc(n_unique))
+
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(sort_new,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("lightgreen")
+))
+
+### 10 different tests are used across 63 papers, a total of 252 tests were used. 
+# the most popular are listed below
+
+
+
+## heat map of which assay were performed - will be more than 63 
+
+
+
+
+## also how many assay were performed? 1, 2, 3, 4, 5, or more. 
+# sum <- assays_heat %>%
+#   group_by(study_ID) %>%
+#   summarise_each(
+#     funs(n_distinct))
+
+
+counts <- assays_heat %>% group_by(study_ID) %>% summarize(n_unique = length(unique(assay)))
+
+table(counts$n_unique)
+ # 1  2  3  4  5  6  7 
+ # 4 10  6 17 16  8  2
+
+hist(counts$n_unique, xlab = "Number of Assays Reported", ylab = "Number of Papers", main = "Number of Assays Peformed per Paper",)
+
+
+
+
+
+```
+
+
+## Applications in the paper
+```{r}
 # Application 
 table(reconciled$`7.1 Do the authors apply the model in the study?_a6895d38-a9ed-4605-a092-4f06ebbd9e2b_Answer`)
  # No Yes 
@@ -372,7 +473,6 @@ barplot(table(reconciled$`7.1 Do the authors apply the model in the study?_a6895
 
 # field of application 
 table(reconciled$`7.1.1 please select the field of application. _d332c2ee-9864-434f-8595-90305808e32d_Answer`)
-
 
 ```
 
