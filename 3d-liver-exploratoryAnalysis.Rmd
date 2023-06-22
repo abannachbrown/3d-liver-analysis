@@ -2,7 +2,9 @@
 title: "Analysis"
 author: "ABB"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: word_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -265,18 +267,58 @@ if any of reviewer comments say HepG2
 
 table(reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`)
 # clean? - Maren to clean 
-# bring in the "other" from comments box 
 
-table(reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Comments`)
-
-
-## clean the type of liver cells
-typeLiver <- reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Comments`
-
-
+      #                 Hepatoma cells                 Hepatoma cells;Other 
+      #                             28                                    2 
+      # Induced pluripotent stem cells Induced pluripotent stem cells;Other 
+      #                              3                                    1 
+      #                          Other                        Primary cells 
+      #                             12                                   14 
+      #   Primary cells;Hepatoma cells                  Primary cells;Other 
+      #                              2                                    1 
 
 barplot(table(reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`), ylab = "Number of studies", cex.names=.5, col = "turquoise")
 
+
+# ABB bring in the "other" from comments box 
+
+table(reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Comments`)
+
+## clean the type of liver cells comments
+
+liverType <- tibble(
+  
+  study_ID = reconciled$study_ID, 
+  liverCells = reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, 
+  liverCellsComment = reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Comments`
+  
+)
+
+
+# remove line breaks
+library(stringr)
+liverType$liverCellsComment <- str_replace_all(liverType$liverCellsComment, "[\n]" , "")
+
+# create categories
+liverType$liverCellsComment <- as.factor(liverType$liverCellsComment)
+
+commentsLiver <- liverType %>%  group_by(liverCellsComment) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(commentsLiver,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("turquoise")
+))
+
+
+
+
+#### how is LIVER model Cultered? 
 
 table(reconciled$`2.2.1Â How is the presented liver model cultured?_b6e561ab-c358-47fa-b9db-61e363b73223_Answer`)
  # Co-culture Monoculture     Unclear 
@@ -292,6 +334,30 @@ table(reconciled$`2.2.1.1 If co-cultured, what type of non-parenchymal cells are
 # Maren to clean manually - bring in "other" responses from comments box
 
 
+
+# LIVER Model
+
+table(reconciled$`3.1 Does the study present a vascularization of the model?_3b31a6ff-4233-4f24-9e7e-2d2eb3c83420_Answer`)
+                    # No    Yes, with perfusion Yes, without perfusion 
+                    # 52                      5                      6
+
+
+barplot(table(reconciled$`3.1 Does the study present a vascularization of the model?_3b31a6ff-4233-4f24-9e7e-2d2eb3c83420_Answer`), ylab = "Number of studies", cex.names=.7, col = "turquoise")
+
+
+## hypoxia 
+table(reconciled$`3.2 Do the authors address hypoxia/normoxia/oxygenation of the liver model?_5b050ea7-da29-4a47-bdea-23edda5877f2_Answer`)
+                 # No Yes, by measurement    Yes, descriptive 
+                 # 59                   1                   3
+barplot(table(reconciled$`3.2 Do the authors address hypoxia/normoxia/oxygenation of the liver model?_5b050ea7-da29-4a47-bdea-23edda5877f2_Answer`), ylab = "Number of studies", cex.names=.7, col = "turquoise")
+
+
+
+
+```
+
+# Liver Cell Meta-Data
+```{r}
 # Meta-data for Liver cells
 
 table(reconciled$`2.4 Which kind of meta data is available for the used liver cells?_2868ee50-2c4c-47e8-a040-427e4f882632_Answer`)
@@ -317,26 +383,11 @@ hist(countsMetaDat$n_unique, xlab = "Number of Meta-Data Items Reported", ylab =
 
 
 
-# LIVER Model
-
-table(reconciled$`3.1 Does the study present a vascularization of the model?_3b31a6ff-4233-4f24-9e7e-2d2eb3c83420_Answer`)
-                    # No    Yes, with perfusion Yes, without perfusion 
-                    # 52                      5                      6
-
-
-barplot(table(reconciled$`3.1 Does the study present a vascularization of the model?_3b31a6ff-4233-4f24-9e7e-2d2eb3c83420_Answer`), ylab = "Number of studies", cex.names=.7, col = "turquoise")
-
-
-## hypoxia 
-table(reconciled$`3.2 Do the authors address hypoxia/normoxia/oxygenation of the liver model?_5b050ea7-da29-4a47-bdea-23edda5877f2_Answer`)
-                 # No Yes, by measurement    Yes, descriptive 
-                 # 59                   1                   3
-barplot(table(reconciled$`3.2 Do the authors address hypoxia/normoxia/oxygenation of the liver model?_5b050ea7-da29-4a47-bdea-23edda5877f2_Answer`), ylab = "Number of studies", cex.names=.7, col = "turquoise")
-
-
 
 
 ```
+
+
 
 
 # Cells 
@@ -379,7 +430,7 @@ table(reconciled$`5.2 How long were the liver models cultured after printing?_1f
 barplot(table(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`), ylab = "Number of studies", cex.names=.5, col = "purple")
 
 
-
+## ABB to order these in time order 
 
 
 ```
@@ -390,8 +441,108 @@ barplot(table(reconciled$`5.2 How long were the liver models cultured after prin
 ```{r liver-marker}
 
 # WHICH
-table(reconciled$`6.1 Which liver markers were analysed in the presented model?_1844378b-1400-4d7a-b9f5-5538df7c7b76_Answer`)
+t <- table(reconciled$`6.1 Which liver markers were analysed in the presented model?_1844378b-1400-4d7a-b9f5-5538df7c7b76_Answer`)
 # clean? 
+
+
+liverMarkers <- separate_rows(reconciled, `6.1 Which liver markers were analysed in the presented model?_1844378b-1400-4d7a-b9f5-5538df7c7b76_Answer` ,sep=";")
+
+markers_heat <- liverMarkers[,c(1, 94)]
+
+colnames(markers_heat) <- c("study_ID", "marker")
+
+new_marker <- markers_heat %>% group_by(marker) %>% summarize(n_unique = length(unique(study_ID)))
+
+new_marker$n_unique <- as.numeric(new_marker$n_unique)
+
+sort_new_marker <- new_marker %>% arrange(desc(n_unique))
+
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(sort_new_marker,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("yellow")
+))
+
+######################
+# liver marker "Other"
+
+t <- table(reconciled$`6.1 Which liver markers were analysed in the presented model?_1844378b-1400-4d7a-b9f5-5538df7c7b76_Comments`)
+
+## clean the type of liver cells comments
+
+
+liverMarkerComments_rows <- separate_rows(reconciled, `6.1 Which liver markers were analysed in the presented model?_1844378b-1400-4d7a-b9f5-5538df7c7b76_Comments`
+   ,sep=";")
+
+liverMarkerComments <- tibble(
+  
+  study_ID = liverMarkerComments_rows$study_ID, 
+  liverMarker = liverMarkerComments_rows$`6.1 Which liver markers were analysed in the presented model?_1844378b-1400-4d7a-b9f5-5538df7c7b76_Answer`, 
+  liverMarkerComment = liverMarkerComments_rows$`6.1 Which liver markers were analysed in the presented model?_1844378b-1400-4d7a-b9f5-5538df7c7b76_Comments`
+  
+)
+
+# remove line breaks
+library(stringr)
+liverMarkerComments$liverMarkerComment <- str_replace_all(liverMarkerComments$liverMarkerComment, "[\n]" , "")
+
+# liverMarkerComments$liverMarker <- as.character(liverMarkerComments$liverMarker)
+
+
+# create categories
+# liverMarkerComments$liverMarkerComment <- as.factor(liverMarkerComments$liverMarkerComment)
+
+commentsLiver <- liverMarkerComments %>%  group_by(liverMarkerComment) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(commentsLiver,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("yellow")
+))
+
+
+
+## trying 6.4 
+# which metabolites were analysed 
+t <- table(reconciled$`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Answer`)
+
+liverMetabolite <- separate_rows(reconciled, `6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Answer`
+   ,sep=";")
+
+liverMetabolite$`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Comments` <- str_replace_all(liverMetabolite$`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Comments`, "[\n]" , "")
+
+liverMetabolite_comments <-  liverMetabolite %>% select(c(study_ID, `6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Answer`, `6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Comments`))
+
+
+commentsLiverMetabolite <- liverMetabolite_comments %>%  group_by(`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Answer`) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+otherLiverMetabolite <- liverMetabolite_comments %>%  group_by(`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Comments`) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+# print(otherLiverMetabolite)
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(commentsLiverMetabolite,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("yellow")
+))
+
+
+#####################
 
 
 # WHERE
@@ -450,11 +601,9 @@ messy_assay <- table(reconciled$`5.3.1 Which assays were performed to assure the
 
 assays <- separate_rows(reconciled, `5.3.1 Which assays were performed to assure the quality of the liver model?_8a415412-28c6-48ff-840a-538ea69a068f_Answer` ,sep=";")
 
-
 assays_heat <- assays[,c(1, 91)]
 
 colnames(assays_heat) <- c("study_ID", "assay")
-
 
 new <- assays_heat %>% group_by(assay) %>% summarize(n_unique = length(unique(study_ID)))
 
