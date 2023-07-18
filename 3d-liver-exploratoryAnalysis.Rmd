@@ -475,6 +475,12 @@ text(x = barplot(t8, ylab = "Number of studies", ylim=c(0, max(t8) + 10), cex.na
 
 
 # ABB bring in the "other" from comments box 
+###############################################################
+
+
+
+# liver cells
+#########################################
 
 table(reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Comments`)
 
@@ -492,8 +498,34 @@ liverType <- tibble(
 # remove line breaks
 library(stringr)
 liverType$liverCellsComment <- str_replace_all(liverType$liverCellsComment, "[\n]" , "")
+liverType <- separate_rows(liverType, liverCellsComment, sep=";")
+
+# remove whitespace from start of str
+liverType$liverCellsComment <- str_trim(liverType$liverCellsComment, "left")
+
+# remove whitespace from end of str
+liverType$liverCellsComment <- str_trim(liverType$liverCellsComment, "right")
+
+liverType <- liverType %>% 
+      mutate(liverCellsComment = recode(liverCellsComment, "Human iPSC-derived hepatocytes" = "human hepatocytes")) %>% 
+      mutate(liverCellsComment = recode(liverCellsComment, "adult stem cell derived hepatocytes" = "human hepatocytes")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "cholangiocarinoma cells" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "bone marrow mesenchymal cells" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "hepatic progenitor cells" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "hepatic stellate cells" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "Hepatocellular carcinoma" = "human cells - other")) %>% 
+    mutate(liverCellsComment = recode(liverCellsComment, "aHSC" = "human cells - other")) %>% 
+    mutate(liverCellsComment = recode(liverCellsComment, "AML12" = "human cells - other")) %>% 
+    mutate(liverCellsComment = recode(liverCellsComment, "hiHep" = "human cells - other")) %>% 
+   mutate(liverCellsComment = recode(liverCellsComment, "hESC lines RC-6 and RC-10" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "HMCS1SA" = "human cells - other")) %>% 
+   mutate(liverCellsComment = recode(liverCellsComment, "liver biopsies" = "human liver tissue")) %>% 
+   mutate(liverCellsComment = recode(liverCellsComment, "porcine liver tissue" = "porcine liver tissue"))
+
+# liverType$liverCellsComment
 
 ## group the mouse ones together 
+# 
 
 # create categories
 liverType$liverCellsComment <- as.factor(liverType$liverCellsComment)
