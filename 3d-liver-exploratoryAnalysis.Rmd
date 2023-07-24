@@ -330,9 +330,32 @@ t8 <- table(reconciled$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-3
 #                             Unclear                     Unclear|Unclear 
 #                                   2                                   1 
 
+
+bioOrigin <-  reconciled %>%select(
+  study_ID, 
+    `4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`, 
+  `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`
+  ) 
+
+
+bioOrigin_1 <- separate_rows(bioOrigin, `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer` , sep="\\|")
+
+bioOrigin_2 <- separate_rows(bioOrigin_1, `4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`, sep="\\|")
+
+
+bioOrigin_4 <- bioOrigin %>%  
+                separate_rows(`4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, sep="\\|") %>% 
+                separate_rows(`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`, sep="\\|") 
+  
+
+bioOrigin_3 <- bioOrigin_2 %>% distinct(study_ID, `4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`, `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`)
+
+
 # barplot(table(reconciled$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`), ylab = "Number of studies", cex.names=.5, col = "blue")
 
-text(x = barplot(t8, ylab = "Number of studies", ylim=c(0, max(t8) + 10), cex.names=.5 , col = "blue", main = "What is the origin of BioInk"), y = t8 + 2, labels = t8, cex = 0.8, )
+text(x = barplot(t8, ylab = "Number of studies", ylim=c(0, max(t8) + 10), cex.names=.5 , col = "blue", main = "What is the origin of BioInk"), y = t8 + 2, labels = t8, cex = 0.8)
+
+
 
 ### Additives
 # -- needs cleaning 
@@ -349,14 +372,25 @@ table(reconciled$`4.1.3.4 Is the cell density of the bioinkÂ provided in the s
 
 
 
+cellDensity_report <-  reconciled %>%select(
+  study_ID, 
+    `4.1.3.4 Is the cell density of the bioinkÂ provided in the study?Â _d03a497a-c8ab-49a6-8fa7-5eca0d168c94_Answer`
+  ) 
+
+cellDensity_report <- separate_rows(cellDensity_report, `4.1.3.4 Is the cell density of the bioinkÂ provided in the study?Â _d03a497a-c8ab-49a6-8fa7-5eca0d168c94_Answer`, sep="\\|")
+
+table(cellDensity_report$`4.1.3.4 Is the cell density of the bioinkÂ provided in the study?Â _d03a497a-c8ab-49a6-8fa7-5eca0d168c94_Answer`)
 
 
+### bioInk type (4.1.3) --> linked to origin of bioink  (4.1.3.2)
 
 ```
 
 
 ### BioInk Sunburst plot
 ```{r bioink-sunburst}
+
+
 
 
 #### BIOINK sunburst 
@@ -372,7 +406,7 @@ bioink <- reconciled %>%select(
 
 
 bioink <- bioink  %>% rename(typeGeneral_level1 = `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
-   typeNatural_level2       = `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+   typeNatural_level2 = `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
   typeSynthetic_level2 = `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
   typeProtein_level3 = `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
   typePoly_level3 = `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
