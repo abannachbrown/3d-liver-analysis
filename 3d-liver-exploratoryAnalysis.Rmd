@@ -87,7 +87,17 @@ prop.table(table(reconciled$`4.1 What kind of printing method is used?_ae684e28-
 
  # barplot(t1, ylab = "Number of studies", ylim=c(0, max(t1) + 20),cex.names=.5 , col = "green")
 
-text(x = barplot(t1, ylab = "Number of studies", ylim=c(0, max(t1) + 10), cex.names=.5 , col = "green", main = "Kind of printing method used"), y = t1 + 2, labels = t1, cex = 0.8)
+
+print_method <- reconciled %>%  
+                  select(study_ID, 
+                   `4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`) %>% 
+                  separate_rows(`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`, sep="\\|")
+
+t1 <- table(print_method$`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`)
+
+
+
+text(x = barplot(t1, ylab = "Number of studies", ylim=c(0, max(t1) + 10), cex.names=0.8, col = "green", main = "Kind of printing method used", las=0), y = t1 + 2, labels = t1, cex = 0.8 )
 
 
 ### ABB add table to specfiy other 
@@ -110,7 +120,18 @@ t2 <- table(reconciled$`4.1.1 Do the authors report the printer model name/numbe
 
 # barplot(table(reconciled$`4.1.1 Do the authors report the printer model name/number?_a3e72486-56d3-4154-a45f-9fb87b8612fc_Answer`), ylab = "Number of studies")
 
-text(x = barplot(t2, ylab = "Number of studies", ylim=c(0, max(t2) + 10), cex.names=.5 , col = "green", main = "Is printer model name/number reported"), y = t2 + 2, labels = t2, cex = 0.8)
+print_model <- reconciled %>%  
+                  select(study_ID, 
+                   `4.1.1 Do the authors report the printer model name/number?_a3e72486-56d3-4154-a45f-9fb87b8612fc_Answer`) %>% 
+                  separate_rows(`4.1.1 Do the authors report the printer model name/number?_a3e72486-56d3-4154-a45f-9fb87b8612fc_Answer`, sep="\\|")
+
+t2 <- table(print_model$`4.1.1 Do the authors report the printer model name/number?_a3e72486-56d3-4154-a45f-9fb87b8612fc_Answer`)
+
+
+
+
+
+text(x = barplot(t2, ylab = "Number of studies", ylim=c(0, max(t2) + 10), cex.names=0.8, col = "green", main = "Is printer model name/number reported"), y = t2 + 2, labels = t2, cex = 0.8)
 
 ```
 
@@ -128,7 +149,7 @@ t3 <- table(reconciled$`4.1.2 What is the source of the printer?_102ba965-5234-4
 
 # barplot(table(reconciled$`4.1.2 What is the source of the printer?_102ba965-5234-4b3e-8b23-bd70cf4e074d_Answer`), ylab = "Number of studies", cex.names=.5,  col = "green")
 
-text(x = barplot(t3, ylab = "Number of studies", ylim=c(0, max(t3) + 10), cex.names=.5 , col = "green", main = "Source of the printer"), y = t3 + 2, labels = t3, cex = 0.8)
+text(x = barplot(t3, ylab = "Number of studies", ylim=c(0, max(t3) + 10), cex.names=.8 , col = "green", main = "Source of the printer"), y = t3 + 2, labels = t3, cex = 0.8)
 
 ```
 
@@ -167,7 +188,7 @@ t4 <-table(printer_forms$`4.1.4 What kind of forms are printed with this ink?_01
 
 # barplot(table(printer_forms$`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`), ylab = "Number of studies", cex.names=.5 , col = "green")
 
-text(x = barplot(t4, ylab = "Number of studies", ylim=c(0, max(t4) + 10), cex.names=.5 , col = "green", main = "What kind of forms are printed with this ink"), y = t4 + 2, labels = t4, cex = 0.8)
+text(x = barplot(t4, ylab = "Number of studies", ylim=c(0, max(t4) + 10), cex.names=.8 , col = "green", main = "What kind of forms are printed with this ink"), y = t4 + 2, labels = t4, cex = 0.8)
 
 ```
 
@@ -225,7 +246,7 @@ t5 <- table(printer_soft$`4.1.5 Do the authors report the name of the 3D modelli
 
 # barplot(table(printer_soft$`4.1.5 Do the authors report the name of the 3D modelling software?_f88d82a9-410c-4118-ad6a-4535d12c4aca_Answer`), ylab = "Number of studies", cex.names=.5, col = "green")
 
-text(x = barplot(t5, ylab = "Number of studies", ylim=c(0, max(t5) + 10), cex.names=.5 , col = "green", main = "Is the 3D modelling software reported"), y = t5 + 2, labels = t5, cex = 0.8)
+text(x = barplot(t5, ylab = "Number of studies", ylim=c(0, max(t5) + 10), cex.names=.8 , col = "green", main = "Is the 3D modelling software reported"), y = t5 + 2, labels = t5, cex = 0.8)
 
 ## Slicing Software
 
@@ -248,7 +269,7 @@ t6 <- table(printer_slice$`4.1.6 Do the authors report the name of slicing softw
 # t6_6
 # barplot(table(printer_slice$`4.1.6 Do the authors report the name of slicing software?_bc07fc45-10aa-441f-9bdf-b32f5037389f_Answer`), ylab = "Number of studies", cex.names=.5, col = "green")
 
-text(x = barplot(t6, ylab = "Number of studies", ylim=c(0, max(t6) + 10), cex.names=.5 , col = "green", main = "Is the name of the slicing software reported?"), y = t6 + 2, labels = t6, cex = 0.8, )
+text(x = barplot(t6, ylab = "Number of studies", ylim=c(0, max(t6) + 10), cex.names=.8 , col = "green", main = "Is the name of the slicing software reported?"), y = t6 + 2, labels = t6, cex = 0.8, )
 
 
 
@@ -318,7 +339,7 @@ table(reconciled$`4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-
 table(reconciled$`4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`) 
 
 
-
+##################################### ORIGIN ###################################################
 ## Origin of BioInk 
 t8 <- table(reconciled$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`)
 # needs cleaning
@@ -339,7 +360,6 @@ bioOrigin <-  reconciled %>%select(
 
 
 bioOrigin_1 <- separate_rows(bioOrigin, `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer` , sep="\\|")
-
 bioOrigin_2 <- separate_rows(bioOrigin_1, `4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`, sep="\\|")
 
 
@@ -361,6 +381,95 @@ text(x = barplot(t8, ylab = "Number of studies", ylim=c(0, max(t8) + 10), cex.na
 
 
 
+### bioInk type (4.1.3) --> linked to origin of bioink  (4.1.3.2)
+reconciled$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`
+
+## sankey 
+
+#### prep data for sankey diagram
+# type --> 
+Print_bioinkOrigin <- reconciled %>%select(
+  study_ID, 
+  `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+ `4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`
+)  
+
+
+Print_bioinkOrigin <- Print_bioinkOrigin  %>% rename(
+   typeGeneral_level1 = `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+bioink_origin = `4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`
+)
+
+
+
+Print_bioinkOrigin1 <- Print_bioinkOrigin %>% 
+                separate_rows(bioink_origin , sep="\\|") %>% 
+              separate_rows(typeGeneral_level1, sep="\\|") 
+
+Print_bioinkOrigin1$bioink_origin <- as.factor(Print_bioinkOrigin1$bioink_origin)
+Print_bioinkOrigin1$typeGeneral_level1 <- as.factor(Print_bioinkOrigin1$typeGeneral_level1 )
+  
+summary(Print_bioinkOrigin1)
+
+Print_bioinkOrigin1_sankey <- Print_bioinkOrigin1 %>% select(study_ID, bioink_origin, typeGeneral_level1)
+
+
+# create a table of frequencies
+freq_table <- Print_bioinkOrigin1_sankey %>% group_by(bioink_origin, typeGeneral_level1) %>% 
+  summarise(n = n())
+
+
+
+print(freq_table)
+
+# create a nodes data frame
+nodes <- data.frame(name = unique(c(as.character(freq_table$bioink_origin),
+                                    as.character(freq_table$typeGeneral_level1))))
+
+
+# create links dataframe
+links <- data.frame(source = match(freq_table$bioink_origin, nodes$name) - 1,
+                    target = match(freq_table$typeGeneral_level1, nodes$name) - 1,
+                    value = freq_table$n,
+                    stringsAsFactors = FALSE)
+
+
+
+
+
+
+
+###############################
+library(plotly)
+
+# Make Sankey diagram
+plot_ly(
+  type = "sankey",
+  orientation = "h",
+  node = list(pad = 15,
+              thickness = 20,
+              line = list(color = "black", width = 0.5),
+              label = nodes$name),
+  link = list(source = links$source,
+              target = links$target,
+              value = links$value),
+  textfont = list(size = 10),
+  width = 720,
+  height = 380
+) %>% layout(title = "Sankey Diagram: Print Method & BioInk Origin",
+         font = list(size = 14),
+         margin = list(t = 40, l = 10, r = 10, b = 10))
+
+
+
+
+
+
+
+```
+
+### BioInk Cell Density & Addatives
+```{r}
 ### Additives
 # -- needs cleaning 
 table(reconciled$`4.1.3.3Â Which information is provided on the additives in the ink or culture?Â _4c2b5908-9c3c-4ba8-91f2-dd9771ac2ad4_Answer`)
@@ -384,11 +493,8 @@ cellDensity_report <-  reconciled %>%select(
 cellDensity_report <- separate_rows(cellDensity_report, `4.1.3.4 Is the cell density of the bioinkÂ provided in the study?Â _d03a497a-c8ab-49a6-8fa7-5eca0d168c94_Answer`, sep="\\|")
 
 table(cellDensity_report$`4.1.3.4 Is the cell density of the bioinkÂ provided in the study?Â _d03a497a-c8ab-49a6-8fa7-5eca0d168c94_Answer`)
-
-
-### bioInk type (4.1.3) --> linked to origin of bioink  (4.1.3.2)
-
 ```
+
 
 
 ### BioInk Sunburst plot
@@ -1269,58 +1375,6 @@ fig <- fig %>% layout(
 )
 
 fig
-
-
-
-
-
-
-# fig1 = go.Figure(data=[go.Sankey(
-#   arrangement = "freeform",
-#   node = dict(
-#     pad = 15,
-#     thickness = 20,
-#     line = dict(color = "black", width = 0.5),
-#     # label = ["Main records identified (database searching)",
-#     #          "Additional records (reviews)",
-#     #          "Records screened",
-#     #          "Records excluded",
-#     #          "Full-text articles assessed for eligibility",
-#     #          "Full-text articles excluded",
-#     #          "Studied included in the literature overview",
-#     #          "Studies included in the meta-analysis"],
-#     x = [0, 0, 0.4, 0.6, 0.5, 0.8, 0.7, 1],
-#     y = [0, 0, 0.5, 0.8, 0.15, 0.05, 0.4, 0.6],
-#     hovertemplate = "%{label}<extra>%{value}</extra>",
-#    # color = ["darkblue","darkblue","darkblue","darkred","darkgreen","darkred","darkgreen","darkgreen"]
-#   ),
-#   link = dict(
-#     source = [0, 1, 2, 2, 4, 4, 6],
-#     target = [2, 2, 3, 4, 5, 6, 7],
-#     value = [688, 1, 597, 92, 34, 58, 43],
-#     customdata = screening_info,
-#     hovertemplate = "%{customdata}",
-#   ))])
-# 
-# fig1.update_layout(images=[dict(
-#   source="neurolibre.svg",
-#   xref="paper", yref="paper",
-#   x=1.02, y=-0.21,
-#   sizex=0.05, sizey=0.05,
-#   xanchor="right", yanchor="bottom"
-# )],
-# width=950,
-# height=500,
-# font_size=12)
-# 
-# fig1.add_annotation(x=1.003, y=-0.205, xref="paper", yref="paper",
-#                     text="<a href=\"https://neurolibre.com\" target=\"_blank\" " +
-#                       "style=\"color:gray!important\">NeuroLibre</a>", showarrow=False)
-# 
-# fig1.show()
-
-
-
 
 
 ```
