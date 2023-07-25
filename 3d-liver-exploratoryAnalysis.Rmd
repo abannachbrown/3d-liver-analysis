@@ -456,7 +456,7 @@ plot_ly(
   textfont = list(size = 10),
   width = 720,
   height = 380
-) %>% layout(title = "Sankey Diagram: Print Method & BioInk Origin",
+) %>% layout(title = "Sankey Diagram: BioInk Type & BioInk Origin",
          font = list(size = 14),
          margin = list(t = 40, l = 10, r = 10, b = 10))
 
