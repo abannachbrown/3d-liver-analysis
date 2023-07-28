@@ -1,0 +1,1004 @@
+---
+author: "Alexandra Bannach-Brown & Maren Hülsemann"
+date: "2023-07-26"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(openxlsx)
+library(tidyverse)
+
+
+data <- openxlsx::read.xlsx("final_data_after_cleaning0726.xlsx", fillMergedCells = TRUE, colNames = FALSE)
+
+names(data) <- paste(data[1, ], data[2, ], sep = "_")
+names(data)[1] <- "study_ID"
+# Get rid of first two rows and columns 
+data <- data[-c(1:2), ]
+
+# clean column names
+library(janitor)
+
+clean_names(data)
+# remove brackets so can search by numbers
+colnames(data) <-  gsub("\\(|)","",colnames(data))
+
+## get only reconciled
+reconciled <- data %>% subset(data$`NOT to be answered by REVIEWER Has the study been reconciled?_cb623db2-5f5e-4676-9497-f22d4d58fd02_Answer` == "Yes") 
+
+# check the number of reconciled studies and confirm with project lead 
+nrow(reconciled)
+# 63
+length(unique(reconciled$study_ID))
+# 63 unique studies
+
+# make all columns factors
+cols <- colnames(reconciled[,21:170])
+reconciled[cols] <- lapply(reconciled[cols], factor)
+
+```
+
+# Figures for 3D Liver Print Systematic Scoping Review
+
+This document provides code for importing and cleaning data from the systematic review that was used to create all figures provided in the submitted manuscript. 
+
+
+
+## Figure 1 - Printing Methods 
+
+### Figure 1a - Kind of printing method used 
+```{r printer-kind}
+print_method <- reconciled %>%  
+                  select(study_ID, 
+                   `4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`) %>% 
+                  separate_rows(`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`, sep="\\|")
+
+t1 <- table(print_method$`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`)
+
+text(x = barplot(t1, ylab = "Number of studies", ylim=c(0, max(t1) + 10), cex.names=0.8, col = "green", main = "What kind of printing method was used?", las=0), y = t1 + 2, labels = t1, cex = 0.8 )
+
+
+```
+
+
+### Figure 1b - What forms are printed with the ink? 
+```{r pinter-forms}
+# Data cleaning
+# Those with a semicolon response ; should now be called "combo"
+# responses separate with a pipe should be merged when they are saying the same thing. 
+printer_forms <- reconciled %>% 
+  mutate(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`= recode(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, "Grid|Grid" = "Grid")) %>% 
+  mutate(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`= recode(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, "lobular liver|lobular liver" = "lobular liver")) %>% 
+  mutate(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`= recode(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, "Other|Other" = "Other")) %>% 
+  mutate(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`= recode(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, "Grid;Other" = "Combination")) %>% 
+  mutate(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`= recode(`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, "lobular liver;Other" = "Combination"))
+
+t4 <-table(printer_forms$`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`)
+
+text(x = barplot(t4, ylab = "Number of studies", ylim=c(0, max(t4) + 10), cex.names=.8 , col = "green", main = "What kind of forms are printed with this ink?"), y = t4 + 2, labels = t4, cex = 0.8)
+
+```
+
+
+### Figure 1c - Which printing methods are used which which bioink? 
+Interactive sankey diagram - hover over each section to see the number of experiments in each category. 
+```{r printer-bioink-sankey, warning=FALSE}
+library(plotly)
+
+#### prep data for sankey diagram
+# type --> 
+Print_bioink <- reconciled %>%select(
+  study_ID, 
+  `4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`,
+  `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+  `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+  `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+  `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+)  
+
+
+Print_bioink <- Print_bioink  %>% rename(
+  print_method = `4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`,
+  typeGeneral_level1 = `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+  typeNatural_level2 = `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+  typeSynthetic_level2 = `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  typeProtein_level3 = `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+  typePoly_level3 = `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+)
+
+
+
+Print_bioink1 <- Print_bioink %>% 
+                separate_rows(print_method , sep="\\|") %>% 
+              separate_rows(typeGeneral_level1, sep="\\|") 
+
+Print_bioink1$print_method <- as.factor(Print_bioink1$print_method)
+Print_bioink1$typeGeneral_level1 <- as.factor(Print_bioink1$typeGeneral_level1 )
+  
+# summary(Print_bioink1)
+
+Print_bioink1_sankey <- Print_bioink1 %>% select(study_ID, print_method, typeGeneral_level1)
+
+
+# create a table of frequencies
+freq_table <- Print_bioink1_sankey %>% group_by(print_method, typeGeneral_level1) %>% 
+  summarise(n = n())
+
+
+# create a nodes data frame
+nodes <- data.frame(name = unique(c(as.character(freq_table$print_method),
+                                    as.character(freq_table$typeGeneral_level1))))
+
+
+# create links dataframe
+links <- data.frame(source = match(freq_table$print_method, nodes$name) - 1,
+                    target = match(freq_table$typeGeneral_level1, nodes$name) - 1,
+                    value = freq_table$n,
+                    stringsAsFactors = FALSE)
+
+
+
+# Make Sankey diagram
+plot_ly(
+  type = "sankey",
+  orientation = "h",
+  node = list(pad = 15,
+              thickness = 20,
+              line = list(color = "black", width = 0.5),
+              label = nodes$name),
+  link = list(source = links$source,
+              target = links$target,
+              value = links$value),
+  textfont = list(size = 10),
+  width = 720,
+  height = 480
+) %>%
+  layout(title = "Sankey Diagram: Print Method & Ink Type",
+         font = list(size = 14),
+         margin = list(t = 40, l = 10, r = 10, b = 10))
+
+
+```
+
+
+### Figure 1d - What "Other" printed forms are used? 
+```{r printer-forms-other, warning=FALSE}
+
+library(stringr)
+
+print_form_comment_other <- tibble( 
+   study_ID = reconciled$study_ID, 
+   method =  reconciled$`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, 
+   comment = reconciled$`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Comments`) 
+
+print_form_comment_other <- print_form_comment_other %>% 
+                  separate_rows(method, sep="\\|") %>%  
+                  subset(method == "Other")
+
+print_form_comment_other <- print_form_comment_other %>% 
+                  separate_rows(comment, sep="\\|")
+
+# remove line breaks
+print_form_comment_other$comment <- str_replace_all(print_form_comment_other$comment, "[\n]" , "")
+
+# remove whitespace from start of str
+print_form_comment_other$comment <- str_trim(print_form_comment_other$comment, "left")
+
+# remove whitespace from end of str
+print_form_comment_other$comment <- str_trim(print_form_comment_other$comment, "right")
+
+# turn variable into a factor to group similar
+#print_form_comment_other$comment <- as.factor(print_form_comment_other$comment)
+
+ table(print_form_comment_other$comment)
+
+# is.data.frame(print_form_comment_other)
+ 
+# rename answers to more easily group them
+print_form_comment_other <- print_form_comment_other %>% 
+      mutate(comment = recode(comment, "doplets" = "droplets")) %>% 
+      mutate(comment = recode(comment, "printing on a chip" = "printed on a chip")) %>%   
+     mutate(comment = recode(comment, "spheroid" = "spheroids")) %>%
+     mutate(comment = recode(comment, "hexagonal constructs" = "hexagonal"))
+             
+
+# group by numbers
+commentsPrintForm <- print_form_comment_other %>%  group_by(comment) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(commentsPrintForm,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("lightgreen")
+))
+
+
+```
+
+
+
+## Figure 2 - BioInks 
+
+### Figure 2a - What bioinks were used?
+Interactive Sunburst plot - hover over each section to see the number of experiments in each category. 
+```{r bioink-sunburst}
+#### BIOINK sunburst 
+
+library(plotme)
+
+# type --> 
+bioink <- reconciled %>% select(
+  study_ID, 
+    `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+    `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+    `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+`4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+  )  
+
+
+bioink <- bioink  %>% rename(typeGeneral_level1 = `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+   typeNatural_level2 = `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+  typeSynthetic_level2 = `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  typeProtein_level3 = `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+  typePoly_level3 = `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+)
+
+bioink_split1 <- separate_rows(bioink, typeGeneral_level1 , sep="\\|")
+bioink_split1_1 <- separate_rows(bioink_split1, typeNatural_level2 , sep="\\|")
+bioink_split1_2 <- separate_rows(bioink_split1_1, typeProtein_level3 , sep="\\|")
+bioink_split1_3 <- separate_rows(bioink_split1_2, typePoly_level3 , sep="\\|")
+bioink_split2 <- separate_rows(bioink_split1_3, typeNatural_level2 , sep=";")
+bioink_split3 <- separate_rows(bioink_split2, typeProtein_level3 , sep=";")
+bioink_split3 <- separate_rows(bioink_split3, typePoly_level3 , sep=";")
+# 148 rows
+# 164 rows
+
+test_bio <- bioink_split3 %>%
+     mutate(
+typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
+typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
+typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
+typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
+            )
+
+
+test_bio$typeSynthetic_level2 <- as.character(test_bio$typeSynthetic_level2)
+  
+
+### merge level 2 & merge level 3 
+test_bio$level3 <- ifelse(!is.na(test_bio$typeProtein_level3), test_bio$typeProtein_level3, test_bio$typePoly_level3)
+test_bio$level2 <- ifelse(!is.na(test_bio$typeNatural_level2), test_bio$typeNatural_level2, test_bio$typeSynthetic_level2)
+
+  
+# table(test_bio$level3)
+
+
+# rename answers to more easily group them
+test_bio <- test_bio %>% 
+      mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>% 
+      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
+# %>%      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
+  
+  
+
+#### START PLOTTING
+
+library(dplyr)
+library(plotme)
+
+
+bioInk_count <-  count(test_bio, 
+                       typeGeneral_level1, 
+                       level2,
+                       level3
+                       #,study_ID
+                       )
+
+
+# sunburst plot
+plotme::count_to_sunburst(bioInk_count)
+
+```
+
+
+### Figure 2b - Cell Densities
+```{r cell-density}
+
+cellDensity_num <- tibble(
+  study_ID = reconciled$study_ID,
+  cellDensity = reconciled$`4.1.3.4.1 Please specify the cell density cells/ml!_a995234c-c94e-4d14-8a6c-fe5bd759b928_Answer`)
+
+
+cellDensity_num <- separate_rows(cellDensity_num, cellDensity, sep="\\|")
+cellDensity_num <- separate_rows(cellDensity_num, cellDensity, sep=";")
+
+
+# remove line breaks
+cellDensity_num$cellDensity <- str_replace_all(cellDensity_num$cellDensity, "[\n]" , "")
+
+# convert to e+ for scientific notation conversion
+cellDensity_num$cellDensity <- str_replace_all(cellDensity_num$cellDensity, "\\*10E" , "e+")
+
+# remove whitespace from start & end of str
+cellDensity_num$cellDensity <- str_trim(cellDensity_num$cellDensity, "left")
+cellDensity_num$cellDensity <- str_trim(cellDensity_num$cellDensity, "right")
+
+
+# rename answers to more easily group them
+# cellDensity_num <- cellDensity_num %>% 
+#       mutate(cellDensity = recode(cellDensity, "1*10E6" = "microarray spotter")) %>% mutate(cellDensity = recode(cellDensity, "scaffold free bioprinting" = "scaffold-free bioprinting"))
+
+
+cellDensity_num$cellDensity <- as.numeric(cellDensity_num$cellDensity)
+
+hist(cellDensity_num$cellDensity, breaks = 50)
+
+```
+
+
+### Figure 2c - Origin of BioInks 
+```{r bioink-origin}
+t8 <- table(reconciled$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`)
+
+bioOrigin <-  reconciled %>%select(
+  study_ID, 
+    `4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`
+ #, `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`
+  ) %>%  separate_rows(`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`, sep="\\|")
+
+t8 <- table(bioOrigin$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`)
+
+text(x = barplot(t8, ylab = "Number of studies", ylim=c(0, max(t8) + 10), cex.names=.8 , col = "blue", main = "What is the origin of BioInk"), y = t8 + 2, labels = t8, cex = 0.8)
+
+
+```
+
+
+### Figure 2d - Available Meta-data for BioInks 
+Frequency of reporting and what meta-data was actually reported.
+```{r bioink-metaData}
+# Maren comment: I think what was reported how often would be most interesting. e.g., 10 out of 34 mentioned the concentration, etc
+# 4.1.3.2.3.
+
+custom_bioInk <- tibble( 
+   study_ID = reconciled$study_ID, 
+   infoProivded =  reconciled$`4.1.3.2.3Â If custom formulated, which information is provided for the bioink?_fe62b3e4-d8f1-4584-a90d-e07317e4c8e1_Answer`
+ # , comment = reconciled$`4.1.3.2.3Â If custom formulated, which information is provided for the bioink?_fe62b3e4-d8f1-4584-a90d-e07317e4c8e1_Comments`
+ ) 
+
+
+custom_bioInk <- separate_rows(custom_bioInk, infoProivded, sep="\\|")
+custom_bioInk <- separate_rows(custom_bioInk, infoProivded, sep=";")
+
+# group by numbers
+custom_bioInk_count <- custom_bioInk %>%  group_by(infoProivded) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+library(formattable)
+
+formattable(custom_bioInk_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_studies_report`= color_bar("lightblue")
+))
+
+
+#################################
+####### How many items were reported? 
+
+custom_bioInk_studies <- custom_bioInk %>%  group_by(study_ID) %>% summarise(n_items_reported = length(unique(infoProivded))) %>%  arrange(desc(n_items_reported)) 
+
+# hist(custom_bioInk_studies$n_items_reported)
+
+t11 <- table(custom_bioInk_studies$n_items_reported)
+
+#barplot(table(custom_bioInk_studies$n_items_reported), ylab = "Number of studies", cex.names=.7, col = "lightblue")
+
+text(x = barplot(t11, ylab = "Number of studies", ylim=c(0, max(t11) + 10), cex.names=.8 , col = "lightblue", main = "How many items were reported about custom-formulated bioink?"), y = t11 + 2, labels = t11, cex = 0.8)
+
+```
+
+
+
+## Figure 3 - Liver Cells 
+
+### Figure 3a - What Type of Liver Cells are used? 
+```{r liverCell-type}
+### combine the ones with semi-colon - into a new category called "Combination"
+
+liver_cells <- reconciled %>% 
+  mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Hepatoma cells;Other" = "Combination")) %>% 
+   mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Primary cells;Other" = "Combination")) 
+
+t9 <- table(liver_cells$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`)
+
+#barplot(table(reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`), ylab = "Number of studies", cex.names=.5, col = "turquoise")
+
+text(x = barplot(t9, ylab = "Number of studies", ylim=c(0, max(t9) + 10), cex.names=.5 , col = "turquoise", main = "What type of Liver Cells are included?"), y = t9 + 2, labels = t8, cex = 0.8, )
+
+```
+
+
+### Figure 3b - What cell cultures were used? 
+```{r liverCells-other, warning=FALSE}
+
+liverType <- tibble(
+  study_ID = reconciled$study_ID, 
+  liverCells = reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, 
+  liverCellsComment = reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Comments`
+)
+
+
+# remove line breaks
+library(stringr)
+liverType$liverCellsComment <- str_replace_all(liverType$liverCellsComment, "[\n]" , "")
+liverType <- separate_rows(liverType, liverCellsComment, sep=";")
+
+# remove whitespace from start of str
+liverType$liverCellsComment <- str_trim(liverType$liverCellsComment, "left")
+
+# remove whitespace from end of str
+liverType$liverCellsComment <- str_trim(liverType$liverCellsComment, "right")
+
+liverType <- liverType %>% 
+      mutate(liverCellsComment = recode(liverCellsComment, "Human iPSC-derived hepatocytes" = "human hepatocytes")) %>% 
+      mutate(liverCellsComment = recode(liverCellsComment, "adult stem cell derived hepatocytes" = "human hepatocytes")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "cholangiocarinoma cells" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "bone marrow mesenchymal cells" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "hepatic progenitor cells" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "hepatic stellate cells" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "Hepatocellular carcinoma" = "human cells - other")) %>% 
+    mutate(liverCellsComment = recode(liverCellsComment, "aHSC" = "human cells - other")) %>% 
+    mutate(liverCellsComment = recode(liverCellsComment, "AML12" = "human cells - other")) %>% 
+    mutate(liverCellsComment = recode(liverCellsComment, "hiHep" = "human cells - other")) %>% 
+   mutate(liverCellsComment = recode(liverCellsComment, "hESC lines RC-6 and RC-10" = "human cells - other")) %>% 
+  mutate(liverCellsComment = recode(liverCellsComment, "HMCS1SA" = "human cells - other")) %>% 
+   mutate(liverCellsComment = recode(liverCellsComment, "liver biopsies" = "human liver tissue")) %>% 
+   mutate(liverCellsComment = recode(liverCellsComment, "porcine liver tissue" = "porcine liver tissue"))
+
+# liverType$liverCellsComment
+
+
+
+
+# create categories
+liverType$liverCellsComment <- as.factor(liverType$liverCellsComment)
+
+commentsLiver <- liverType %>%  group_by(liverCellsComment) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+## remove NA options 
+# remove NAs as they dont make sense
+commentsLiver <- commentsLiver %>%  
+                    drop_na(liverCellsComment)
+
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(commentsLiver,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("turquoise")
+))
+
+```
+
+
+### Figure 3c - What Type of non-parenchymal cells were included in the co-cultures? 
+```{r non-parenchymalCells}
+
+nonParanchymal <- tibble(
+  study_ID = reconciled$study_ID, 
+  nonParanchymalCellType = reconciled$`2.2.1.1 If co-cultured, what type of non-parenchymal cells are included?_b729a62f-2dc7-47b6-ada7-e1ed8e363918_Answer`, 
+  Comment = reconciled$`2.2.1.1 If co-cultured, what type of non-parenchymal cells are included?_b729a62f-2dc7-47b6-ada7-e1ed8e363918_Comments`
+)
+
+nonParanchymal <- separate_rows(nonParanchymal, nonParanchymalCellType, sep="\\|")
+nonParanchymal <- separate_rows(nonParanchymal, nonParanchymalCellType, sep=";")
+
+
+# group by numbers
+nonParanchymal_count <- nonParanchymal %>%  group_by(nonParanchymalCellType) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+library(formattable)
+
+formattable(nonParanchymal_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_studies_report`= color_bar("turquoise")
+))
+
+```
+
+
+### Figure 3d - What Meta-data was provided for the Liver Cells? 
+```{r LiverCell-meta}
+liverCell_meta <- reconciled %>% mutate(`2.4 Which kind of meta data is available for the used liver cells?_2868ee50-2c4c-47e8-a040-427e4f882632_Answer` = recode(`2.4 Which kind of meta data is available for the used liver cells?_2868ee50-2c4c-47e8-a040-427e4f882632_Answer`, "Common cell line;None" = "Common cell line"))
+
+liverMetaData <- separate_rows(liverCell_meta, `2.4 Which kind of meta data is available for the used liver cells?_2868ee50-2c4c-47e8-a040-427e4f882632_Answer` ,sep=";")
+
+
+liverMetaData_heat <- liverMetaData[,c(1, 58)]
+
+colnames(liverMetaData_heat) <- c("study_ID", "metaData")
+
+countsMetaDat <- liverMetaData_heat %>% group_by(study_ID) %>% summarize(n_unique = length(unique(metaData)))
+
+t10 <- table(countsMetaDat$n_unique)
+#  1  2  3 
+# 56  2  5 
+
+
+hist(countsMetaDat$n_unique, xlab = "Number of Meta-Data Items Reported", ylab = "Number of Papers", main = "Meta-Data Items about the Cell Lines Peformed per Paper", breaks = 3)
+
+## convert to facotrs to display barplot
+ countsMetaDat$n_unique <- as.factor(countsMetaDat$n_unique)
+
+
+text(x = barplot(t10, ylab = "Number of Meta-Data Items", ylim=c(0, max(t10) + 10), cex.names=.8 , col = "turquoise", main = "How many meta-data items are reported about the liver cells?"), y = t10 + 2, labels = t10, cex = 0.8)
+
+
+```
+
+
+### Figure 3e - Additives
+```{r LiverAdditives}
+### Additives
+# -- needs cleaning 
+# table(reconciled$`4.1.3.3Â Which information is provided on the additives in the ink or culture?Â _4c2b5908-9c3c-4ba8-91f2-dd9771ac2ad4_Answer`)
+# needs cleaning
+
+liverAdditive <- tibble(
+  study_ID = reconciled$study_ID, 
+  additive = reconciled$`4.1.3.3Â Which information is provided on the additives in the ink or culture?Â _4c2b5908-9c3c-4ba8-91f2-dd9771ac2ad4_Answer`
+)
+
+
+liverAdditive <- separate_rows(liverAdditive, additive, sep="\\|")
+liverAdditive <- separate_rows(liverAdditive, additive, sep=";")
+
+# group by numbers
+liverAdditive_count <- liverAdditive %>%  group_by(additive) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+library(formattable)
+
+formattable(liverAdditive_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_studies_report`= color_bar("turquoise")
+))
+
+
+#################################
+####### How many items were reported? 
+
+additives_studies <- liverAdditive %>%  group_by(study_ID) %>% summarise(n_items_reported = length(unique(additive))) %>%  arrange(desc(n_items_reported)) 
+
+# hist(custom_bioInk_studies$n_items_reported)
+
+t12 <- table(additives_studies$n_items_reported)
+
+#barplot(table(custom_bioInk_studies$n_items_reported), ylab = "Number of studies", cex.names=.7, col = "lightblue")
+
+text(x = barplot(t12, ylab = "Number of studies", ylim=c(0, max(t12) + 10), cex.names=.8 , col = "turquoise", main = "How many items were reported about bioink or co-culture additives?"), y = t12 + 2, labels = t12, cex = 0.8)
+
+
+
+###################################################
+## 2.1.1.1 - if xeno free
+
+additives <- tibble(
+  study_ID = reconciled$study_ID, 
+  additive = reconciled$`2.1.1.1 If not xeno-free, which additives are included in the study?_39f4070b-a7cd-4b06-9618-47e07363219c_Answer`
+)
+
+additives <- separate_rows(additives, additive, sep="\\|")
+additives <- separate_rows(additives, additive, sep=";")
+
+
+# group by numbers
+Additive_count <- additives %>%  group_by(additive) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+library(formattable)
+
+formattable(Additive_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_studies_report`= color_bar("turquoise")
+))
+
+
+
+
+#### 2.1.2 - Animal 
+
+additivesAnimal <- tibble(
+  study_ID = reconciled$study_ID, 
+  additive = reconciled$`2.1.2 If animal, which of the following additives are included in the study?_bd00875c-4d61-4449-8629-6ff8fab20ec5_Answer`
+)
+
+
+
+additivesAnimal <- separate_rows(additivesAnimal, additive, sep="\\|")
+additivesAnimal <- separate_rows(additivesAnimal, additive, sep=";")
+
+
+# group by numbers
+AdditiveAnimal_count <- additivesAnimal %>%  group_by(additive) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+library(formattable)
+
+formattable(AdditiveAnimal_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_studies_report`= color_bar("turquoise")
+))
+
+
+
+#### 2.1.3 - if both
+additivesBoth <- tibble(
+  study_ID = reconciled$study_ID, 
+  additive = reconciled$`2.1.3 If both, which of the following additives are included in the study?_648859a8-3da6-4d7e-b457-d3443a608681_Answer`
+)
+
+additivesBoth <- separate_rows(additivesBoth, additive, sep="\\|")
+additivesBoth <- separate_rows(additivesBoth, additive, sep=";")
+
+
+# group by numbers
+AdditiveBoth_count <- additivesBoth %>%  group_by(additive) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+library(formattable)
+
+formattable(AdditiveBoth_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_studies_report`= color_bar("turquoise")
+))
+
+
+```
+
+
+
+## Figure 4 - Model Conditions and Measurements
+
+### Figure 4a
+```{r culture-conditions}
+
+t13 <- table(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`)
+        # < 72 hours 2 weeks - 3 months   3 days - 2 weeks       not reported 
+        #          2                 16                 42                  3 
+
+# manually set levels 
+
+# barplot(table(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`), ylab = "Number of studies", cex.names=.5, col = "purple")
+
+
+text(x = barplot(t13, ylab = "Number of Studies", ylim=c(0, max(t13) + 10), cex.names=.8 , col = "purple", main = "How long were liver models cultured?"), y = t13 + 2, labels = t13, cex = 0.8)
+
+```
+
+
+### Figure 4b- What Liver Proteins were measured?
+```{r 6-1-LiverMarker, include=FALSE}
+
+liverMarkers <- tibble(
+  study_ID = reconciled$study_ID, 
+  liverMarker = reconciled$`6.1 Which liver markers were analysed in the presented model?_1844378b-1400-4d7a-b9f5-5538df7c7b76_Answer`
+)
+
+
+liverMarkers <- separate_rows(liverMarkers, liverMarker, sep="\\|")
+liverMarkers <- separate_rows(liverMarkers, liverMarker, sep=";")
+
+# group by numbers
+liverMarkers <- liverMarkers %>%  group_by(liverMarker) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(liverMarkers,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_studies_report`= color_bar("yellow")
+))
+
+
+```
+
+
+```{r liverProtein}
+# otherLiverMetabolite <- liverMetabolite_comments %>%  group_by(`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Comments`) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+# otherLiverMetabolite <- otherLiverMetabolite %>% 
+#   drop_na(`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Comments`)
+
+
+liverMetabolite <- tibble(
+  study_ID = reconciled$study_ID, 
+  metabolite = reconciled$`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Answer`, 
+  comment = reconciled$`6.4 Which metabolites were analyzed in the study?_5652d702-1441-4234-b37d-f0b44d64c5e9_Comments`
+) 
+
+
+liverMetabolite <- separate_rows(liverMetabolite, metabolite, sep="\\|")
+liverMetabolite <- separate_rows(liverMetabolite, metabolite, sep=";")
+
+
+liverMetabolite <- liverMetabolite %>%  group_by(metabolite) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+# remove NAs as they dont make sense
+liverMetabolite <- liverMetabolite[liverMetabolite$metabolite != "None" ,]
+
+
+#install.packages("formattable")
+library(formattable)
+
+formattable(liverMetabolite,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("yellow")
+))
+
+
+
+
+#### CLEAN THIS!! 
+# formattable(otherLiverMetabolite, 
+#              align = c("l", "r"), 
+#              list(`Indicator Name` = formatter(
+#               "span", style = ~ style(color = "grey",font.weight = "bold")), 
+#               `n_unique`= color_bar("yellow")
+#             
+#             ))
+
+```
+
+
+### Figure 4c - What Cytochome Isoforms were measured?
+```{r cytochromeIsoform}
+
+# liverCytochome <- separate_rows(reconciled, `6.2.1 If yes, which cytochrome isoforms were analysed?_62bdffd7-d9c7-4646-9f66-9510f5bf2649_Answer`
+#    ,sep=";")
+
+liverCytochome_only <- tibble(
+  study_ID = reconciled$study_ID, 
+  cytochrome = reconciled$`6.2.1 If yes, which cytochrome isoforms were analysed?_62bdffd7-d9c7-4646-9f66-9510f5bf2649_Answer`
+) 
+
+
+liverCytochome_only <- separate_rows(liverCytochome_only, cytochrome, sep="\\|")
+liverCytochome_only <- separate_rows(liverCytochome_only, cytochrome, sep=";")
+
+
+liverCytochome_only <- liverCytochome_only %>%  group_by(cytochrome) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+# remove NAs as they dont make sense
+liverCytochome_only <- liverCytochome_only %>%  
+                    drop_na(cytochrome)
+
+formattable(liverCytochome_only,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("yellow")
+))
+
+
+
+```
+
+
+### Figure 4d - Storage Conditions
+```{r storage-conditions}
+
+t14 <- table(reconciled$`5.1 Does the study report the storage conditions of the printed models?_0adebee3-f3bc-4b01-a756-f8a93dc7b5bc_Answer`)
+
+
+text(x = barplot(t14, ylab = "Number of Studies", ylim=c(0, max(t14) + 10), cex.names=.8 , col = "purple", main = "Were storage conditions reported?"), y = t14 + 2, labels = t14, cex = 0.8)
+
+
+```
+
+
+
+### Figure 4d - Frequency of Assays Used
+```{r assay-freq}
+# 5.3.1
+
+assays <- tibble(
+  study_ID = reconciled$study_ID, 
+  assay = reconciled$`5.3.1 Which assays were performed to assure the quality of the liver model?_8a415412-28c6-48ff-840a-538ea69a068f_Answer`
+) 
+
+assays <- separate_rows(assays, assay, sep="\\|")
+assays <- separate_rows(assays, assay, sep=";")
+
+
+assays <- assays %>%  group_by(assay) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+# remove NAs as they dont make sense
+assays <- assays %>%  
+                    drop_na(assay)
+
+
+customPurple = "#C5B4E3"
+
+formattable(assays,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar(customPurple)
+))
+
+
+```
+
+
+### Figure 4e - Agonists
+```{r agonists}
+# 6.3.1 
+
+
+agonists <- tibble(
+  study_ID = reconciled$study_ID, 
+  agonist = reconciled$`6.3.1  Please specify the agonists of the receptors that are applied._d42bd778-8656-4e6b-8b11-e4bdecb6a9b9_Answer`, 
+  agonistsComment = reconciled$`6.3.1  Please specify the agonists of the receptors that are applied._d42bd778-8656-4e6b-8b11-e4bdecb6a9b9_Comments`
+)
+
+
+agonists <- separate_rows(agonists, agonist, sep="\\|")
+agonists <- separate_rows(agonists, agonist, sep=";")
+
+
+agonists <- separate_rows(agonists, agonistsComment, sep="\\|")
+agonists <- separate_rows(agonists, agonistsComment, sep=";")
+
+# remove line breaks
+agonists$agonistsComment <- str_replace_all(agonists$agonistsComment, "[\n]" , "")
+
+agonists_count <- agonists %>%  group_by(agonist) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+# remove NAs/None as they dont make sense
+# liverMetabolite <- liverMetabolite[liverMetabolite$metabolite != "None" ,]
+
+
+#install.packages("formattable")
+library(formattable)
+
+customPurple = "#C5B4E3"
+
+formattable(agonists_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar(customPurple)
+))
+
+
+table(agonists$agonistsComment)
+
+
+```
+
+
+
+## Figure 5 - Applications 
+```{r applications}
+# Application 
+t15 <- table(reconciled$`7.1 Do the authors apply the model in the study?_a6895d38-a9ed-4605-a092-4f06ebbd9e2b_Answer`)
+ # No Yes 
+ # 35  28 
+
+
+
+text(x = barplot(t15, ylab = "Number of Studies", ylim=c(0, max(t15) + 10), cex.names=.8 , col = "gray", main = "Do authors apply the model in the study?"), y = t15 + 2, labels = t15, cex = 0.8)
+
+
+###########################################################
+# field of application 
+#table(reconciled$`7.1.1 please select the field of application. _d332c2ee-9864-434f-8595-90305808e32d_Answer`)
+
+
+applications <- tibble(
+  study_ID = reconciled$study_ID, 
+  application = reconciled$`7.1.1 please select the field of application. _d332c2ee-9864-434f-8595-90305808e32d_Answer`
+)
+
+
+applications <- separate_rows(applications, application, sep="\\|")
+applications <- separate_rows(applications, application, sep=";")
+
+applications_count <- applications %>%  group_by(application) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+# remove NAs/None as they dont make sense
+# liverMetabolite <- liverMetabolite[liverMetabolite$metabolite != "None" ,]
+applications_count <- applications_count %>%  
+                    drop_na(application)
+
+#install.packages("formattable")
+library(formattable)
+
+customPurple = "#C5B4E3"
+
+formattable(applications_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar("lightgrey")
+))
+
+
+
+
+```
+
+
+
+
+## Supplementary Figures 
+
+
+
+### Printer Forms Over Times
+```{r printer-forms-time}
+
+
+printer_form_year<- table(printer_forms$`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, printer_forms$NA_Year)
+
+
+printer_form_yearDF <- as.data.frame(printer_form_year)
+# long to wide 
+printer_form_yearDF <- printer_form_yearDF %>% spread(
+   key = Var2, 
+   value = Freq)
+
+
+# printer_form_yearDF 
+# names(printer_form_yearDF) <- gsub(x = names(printer_form_yearDF), pattern = "X", replacement = "")  
+
+
+library(formattable)
+
+formattable(printer_form_yearDF,
+            #align =c("l", "r"),
+            list(
+              `Indicator Name` = formatter(
+              "span", 
+              style = ~ style(color = "grey",font.weight = "bold")), 
+             area(row = 1:4) ~ color_tile("white", "green")))
+
+
+
+```
+
+
+
