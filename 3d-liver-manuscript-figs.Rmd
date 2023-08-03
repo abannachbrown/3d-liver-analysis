@@ -14,7 +14,7 @@ library(openxlsx)
 library(tidyverse)
 
 
-data <- openxlsx::read.xlsx("final_data_after_cleaning0726.xlsx", fillMergedCells = TRUE, colNames = FALSE)
+data <- openxlsx::read.xlsx("final_data_after_cleaning0803.xlsx", fillMergedCells = TRUE, colNames = FALSE)
 
 names(data) <- paste(data[1, ], data[2, ], sep = "_")
 names(data)[1] <- "study_ID"
@@ -129,6 +129,10 @@ Print_bioink1_sankey <- Print_bioink1 %>% select(study_ID, print_method, typeGen
 # create a table of frequencies
 freq_table <- Print_bioink1_sankey %>% group_by(print_method, typeGeneral_level1) %>% 
   summarise(n = n())
+
+freq_table <- freq_table %>% 
+   mutate(print_method= recode(print_method, "Unclear" = "Unclear - Method")) %>% 
+     mutate(typeGeneral_level1= recode(typeGeneral_level1, "Unclear" = "Unclear - Bioink"))
 
 
 # create a nodes data frame
@@ -253,17 +257,21 @@ bioink <- bioink  %>% rename(typeGeneral_level1 = `4.1.3 What type of bioink was
   typePoly_level3 = `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
 )
 
+
+
+### other is Matrigel
+
 bioink_split1 <- separate_rows(bioink, typeGeneral_level1 , sep="\\|")
 bioink_split1_1 <- separate_rows(bioink_split1, typeNatural_level2 , sep="\\|")
 bioink_split1_2 <- separate_rows(bioink_split1_1, typeProtein_level3 , sep="\\|")
 bioink_split1_3 <- separate_rows(bioink_split1_2, typePoly_level3 , sep="\\|")
+
 bioink_split2 <- separate_rows(bioink_split1_3, typeNatural_level2 , sep=";")
 bioink_split3 <- separate_rows(bioink_split2, typeProtein_level3 , sep=";")
 bioink_split3 <- separate_rows(bioink_split3, typePoly_level3 , sep=";")
-# 148 rows
 # 164 rows
 
-test_bio <- bioink_split3 %>%
+test_bio <- bioink_split1_3 %>%
      mutate(
 typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
 typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
@@ -284,12 +292,65 @@ test_bio$level2 <- ifelse(!is.na(test_bio$typeNatural_level2), test_bio$typeNatu
 
 
 # rename answers to more easily group them
-test_bio <- test_bio %>% 
-      mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>% 
-      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
-# %>%      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
+# test_bio <- test_bio %>% 
+#       mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>% 
+#       mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
+# # %>%      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
+#   
   
+
+
+#################### update after discussion with experts on interpretation
+bioInk_72 <- bioink_split1 %>%
+     mutate(
+typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), 
+typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), 
+typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
+typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
+typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
+typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
+            )
+
+# turn all cols to character
+bioInk_72 <- bioink_split1 %>%
+  mutate(across(everything(), as.character))
+
+#str(bioInk_72)
+
+### merge level 2 & merge level 3 
+bioInk_72$level3 <- ifelse(!is.na(bioInk_72$typeProtein_level3), bioInk_72$typeProtein_level3, bioInk_72$typePoly_level3)
+bioInk_72$level2 <- ifelse(!is.na(bioInk_72$typeNatural_level2), bioInk_72$typeNatural_level2, bioInk_72$typeSynthetic_level2)
+
   
+#table(bioInk_72$level2)
+table(bioInk_72$level3)
+
+
+# rename answers to more easily group them
+bioInk_72 <- bioInk_72 %>%
+      mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>%
+  mutate(level3 = recode(level3, "Collagens;Gelatin" = "Collagen+Gelatin")) %>%
+  mutate(level3 = recode(level3, "Collagens|Collagens" = "Collagen")) %>%
+    mutate(level3 = recode(level3, "Gelatin|Gelatin" = "Gelatin")) %>%
+      mutate(level3 = recode(level3, "Gelatin;Silk-fibroin" = "Gelatin+Silk-fibroin")) %>%
+        mutate(level3 = recode(level3, "Gelatin;Fibrinogen" = "Gelatin+Fibrinogen")) %>%
+      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG")) %>% 
+    mutate(level2 = recode(level2, "Protein based" = "Protein")) %>% 
+    mutate(level2 = recode(level2, "Polysaccharide based" = "Polysaccharide")) %>% 
+  mutate(level2 = recode(level2, "dECM based" = "dECM")) %>% 
+  mutate(level2 = recode(level2, "Protein based;Polysaccharide based" = "Protein + Poly")) %>% 
+ mutate(level2 = recode(level2, "Protein based;dECM based" = "Protein + dECM")) %>% 
+   mutate(level2 = recode(level2, "Polysaccharide based;dECM based" = "Poly + dECM")) %>% 
+mutate(level2 = recode(level2, "Protein based;Polysaccharide based;Other" = "Protein+Poly+MatriGel")) %>% 
+  mutate(level2 = recode(level2, "Protein based;Polysaccharide based;dECM based" = "Protein+Poly+dECM")) %>% 
+    mutate(level2 = recode(level2, "Protein based;Polysaccharide based|Protein based;Polysaccharide based" = "Protein + Poly")) %>% 
+mutate(level2 = recode(level2, "Protein based|Protein based" = "Protein"))
+  
+#  Protein based|dECM based
+# which(bioInk_72$level2 == "Protein based|dECM based")
+
+bioInk_72[30, "level2"] <- "Protein based"
+bioInk_72[31, "level2"] <- "dECM based"
 
 #### START PLOTTING
 
@@ -297,7 +358,7 @@ library(dplyr)
 library(plotme)
 
 
-bioInk_count <-  count(test_bio, 
+bioInk_count <-  count(bioInk_72, 
                        typeGeneral_level1, 
                        level2,
                        level3
@@ -321,7 +382,7 @@ cellDensity_num <- tibble(
 
 cellDensity_num <- separate_rows(cellDensity_num, cellDensity, sep="\\|")
 cellDensity_num <- separate_rows(cellDensity_num, cellDensity, sep=";")
-
+cellDensity_num <- separate_rows(cellDensity_num, cellDensity, sep=",")
 
 # remove line breaks
 cellDensity_num$cellDensity <- str_replace_all(cellDensity_num$cellDensity, "[\n]" , "")
@@ -338,10 +399,28 @@ cellDensity_num$cellDensity <- str_trim(cellDensity_num$cellDensity, "right")
 # cellDensity_num <- cellDensity_num %>% 
 #       mutate(cellDensity = recode(cellDensity, "1*10E6" = "microarray spotter")) %>% mutate(cellDensity = recode(cellDensity, "scaffold free bioprinting" = "scaffold-free bioprinting"))
 
+options(scipen = 999)
 
-cellDensity_num$cellDensity <- as.numeric(cellDensity_num$cellDensity)
 
-hist(cellDensity_num$cellDensity, breaks = 50)
+sorted <- cellDensity_num[order(as.numeric(as.character(cellDensity_num$cellDensity))), ]
+
+t16 <- table(sorted$cellDensity)
+
+#t16
+
+text(x = barplot(t16, ylab = "Number of Inks", ylim=c(0, max(t16) + 10), cex.names=.8 , col = "grey", main = "What is the Reported Cell Density"), y = t16 + 2, labels = t16, cex = 0.8)
+
+
+
+# cellDensity_num$cellDensity <- as.numeric(cellDensity_num$cellDensity)
+# 
+# hist <- hist(cellDensity_num$cellDensity, breaks = 500, plot = FALSE)
+# 
+# 
+# plot(hist, freq = TRUE, labels = TRUE)
+
+options(scipen = 0)
+
 
 ```
 
@@ -358,7 +437,7 @@ bioOrigin <-  reconciled %>%select(
 
 t8 <- table(bioOrigin$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`)
 
-text(x = barplot(t8, ylab = "Number of studies", ylim=c(0, max(t8) + 10), cex.names=.8 , col = "blue", main = "What is the origin of BioInk"), y = t8 + 2, labels = t8, cex = 0.8)
+text(x = barplot(t8, ylab = "Number of BioInks", ylim=c(0, max(t8) + 10), cex.names=.8 , col = "blue", main = "What is the origin of BioInk"), y = t8 + 2, labels = t8, cex = 0.8)
 
 
 ```
@@ -382,6 +461,9 @@ custom_bioInk <- separate_rows(custom_bioInk, infoProivded, sep=";")
 
 # group by numbers
 custom_bioInk_count <- custom_bioInk %>%  group_by(infoProivded) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+custom_bioInk_count <- custom_bioInk_count %>%  
+                    drop_na(infoProivded)
 
 library(formattable)
 
@@ -418,13 +500,16 @@ text(x = barplot(t11, ylab = "Number of studies", ylim=c(0, max(t11) + 10), cex.
 
 liver_cells <- reconciled %>% 
   mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Hepatoma cells;Other" = "Combination")) %>% 
-   mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Primary cells;Other" = "Combination")) 
+   mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Primary cells;Other" = "Combination")) %>% 
+  mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "primary cells" = "Primary cells"))%>% 
+  mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Induced pluripotent stem cells" = "iPSCs")) 
+
 
 t9 <- table(liver_cells$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`)
 
 #barplot(table(reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`), ylab = "Number of studies", cex.names=.5, col = "turquoise")
 
-text(x = barplot(t9, ylab = "Number of studies", ylim=c(0, max(t9) + 10), cex.names=.5 , col = "turquoise", main = "What type of Liver Cells are included?"), y = t9 + 2, labels = t8, cex = 0.8, )
+text(x = barplot(t9, ylab = "Number of studies", ylim=c(0, max(t9) + 10), cex.names=.8 , col = "turquoise", main = "What type of Liver Cells are included?"), y = t9 + 2, labels = t8, cex = 0.8, )
 
 ```
 
@@ -450,21 +535,21 @@ liverType$liverCellsComment <- str_trim(liverType$liverCellsComment, "left")
 # remove whitespace from end of str
 liverType$liverCellsComment <- str_trim(liverType$liverCellsComment, "right")
 
-liverType <- liverType %>% 
-      mutate(liverCellsComment = recode(liverCellsComment, "Human iPSC-derived hepatocytes" = "human hepatocytes")) %>% 
-      mutate(liverCellsComment = recode(liverCellsComment, "adult stem cell derived hepatocytes" = "human hepatocytes")) %>% 
-  mutate(liverCellsComment = recode(liverCellsComment, "cholangiocarinoma cells" = "human cells - other")) %>% 
-  mutate(liverCellsComment = recode(liverCellsComment, "bone marrow mesenchymal cells" = "human cells - other")) %>% 
-  mutate(liverCellsComment = recode(liverCellsComment, "hepatic progenitor cells" = "human cells - other")) %>% 
-  mutate(liverCellsComment = recode(liverCellsComment, "hepatic stellate cells" = "human cells - other")) %>% 
-  mutate(liverCellsComment = recode(liverCellsComment, "Hepatocellular carcinoma" = "human cells - other")) %>% 
-    mutate(liverCellsComment = recode(liverCellsComment, "aHSC" = "human cells - other")) %>% 
-    mutate(liverCellsComment = recode(liverCellsComment, "AML12" = "human cells - other")) %>% 
-    mutate(liverCellsComment = recode(liverCellsComment, "hiHep" = "human cells - other")) %>% 
-   mutate(liverCellsComment = recode(liverCellsComment, "hESC lines RC-6 and RC-10" = "human cells - other")) %>% 
-  mutate(liverCellsComment = recode(liverCellsComment, "HMCS1SA" = "human cells - other")) %>% 
-   mutate(liverCellsComment = recode(liverCellsComment, "liver biopsies" = "human liver tissue")) %>% 
-   mutate(liverCellsComment = recode(liverCellsComment, "porcine liver tissue" = "porcine liver tissue"))
+# liverType <- liverType %>% 
+#       mutate(liverCellsComment = recode(liverCellsComment, "Human iPSC-derived hepatocytes" = "human hepatocytes")) %>% 
+#       mutate(liverCellsComment = recode(liverCellsComment, "adult stem cell derived hepatocytes" = "human hepatocytes")) %>% 
+#   mutate(liverCellsComment = recode(liverCellsComment, "cholangiocarinoma cells" = "human cells - other")) %>% 
+#   mutate(liverCellsComment = recode(liverCellsComment, "bone marrow mesenchymal cells" = "human cells - other")) %>% 
+#   mutate(liverCellsComment = recode(liverCellsComment, "hepatic progenitor cells" = "human cells - other")) %>% 
+#   mutate(liverCellsComment = recode(liverCellsComment, "hepatic stellate cells" = "human cells - other")) %>% 
+#   mutate(liverCellsComment = recode(liverCellsComment, "Hepatocellular carcinoma" = "human cells - other")) %>% 
+#     mutate(liverCellsComment = recode(liverCellsComment, "aHSC" = "human cells - other")) %>% 
+#     mutate(liverCellsComment = recode(liverCellsComment, "AML12" = "human cells - other")) %>% 
+#     mutate(liverCellsComment = recode(liverCellsComment, "hiHep" = "human cells - other")) %>% 
+#    mutate(liverCellsComment = recode(liverCellsComment, "hESC lines RC-6 and RC-10" = "human cells - other")) %>% 
+#   mutate(liverCellsComment = recode(liverCellsComment, "HMCS1SA" = "human cells - other")) %>% 
+#    mutate(liverCellsComment = recode(liverCellsComment, "liver biopsies" = "human liver tissue")) %>% 
+#    mutate(liverCellsComment = recode(liverCellsComment, "porcine liver tissue" = "porcine liver tissue"))
 
 # liverType$liverCellsComment
 
@@ -510,7 +595,14 @@ nonParanchymal <- separate_rows(nonParanchymal, nonParanchymalCellType, sep=";")
 
 
 # group by numbers
-nonParanchymal_count <- nonParanchymal %>%  group_by(nonParanchymalCellType) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+nonParanchymal_count <- nonParanchymal %>%    mutate(nonParanchymalCellType = recode(nonParanchymalCellType, "Other" = "Fibroblasts")) %>% group_by(nonParanchymalCellType) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+
+
+# remove NAs as they dont make sense
+nonParanchymal_count <- nonParanchymal_count %>%  
+
+                    drop_na(nonParanchymalCellType)
 
 library(formattable)
 
@@ -675,6 +767,49 @@ formattable(AdditiveBoth_count,
 ))
 
 
+
+##### Combine animal, if not xeno-free and both 
+
+additivesCombo <- tibble(
+  study_ID = reconciled$study_ID, 
+  additive_xeno = reconciled$`2.1.1.1 If not xeno-free, which additives are included in the study?_39f4070b-a7cd-4b06-9618-47e07363219c_Answer`,
+  additive_both = reconciled$`2.1.3 If both, which of the following additives are included in the study?_648859a8-3da6-4d7e-b457-d3443a608681_Answer`, 
+    additive_animal = reconciled$`2.1.2 If animal, which of the following additives are included in the study?_bd00875c-4d61-4449-8629-6ff8fab20ec5_Answer`
+  
+)
+
+additivesCombo <- separate_rows(additivesCombo, additive_xeno, sep="\\|")
+additivesCombo <- separate_rows(additivesCombo, additive_xeno, sep=";")
+
+additivesCombo <- separate_rows(additivesCombo, additive_both, sep="\\|")
+additivesCombo <- separate_rows(additivesCombo, additive_both, sep=";")
+
+additivesCombo <- separate_rows(additivesCombo, additive_animal, sep="\\|")
+additivesCombo <- separate_rows(additivesCombo, additive_animal, sep=";")
+
+
+### merge level 2 & merge level 3 
+# additivesCombo$additives_all <- ifelse(!is.na(additivesCombo$additive_animal), additivesCombo$additive_animal, additivesCombo$additive_both)
+# additivesCombo$additives_all <- ifelse(!is.na(additivesCombo$additive_both), additivesCombo$additive_both, additivesCombo$additive_xeno)
+
+
+additivesCombo <-  additivesCombo %>% unite("additives_all", c("additive_animal","additive_both", "additive_xeno"), na.rm = TRUE, remove = FALSE) %>% 
+  subset(study_ID != "4d390c76-69b1-4a62-9805-72659c3be47b") %>% 
+  subset(study_ID != "0a879122-3ef7-4fb8-85fb-d87cd7622675")
+
+
+additivesCombo_count <- additivesCombo %>%  group_by(additives_all) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
+
+library(formattable)
+
+formattable(additivesCombo_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_studies_report`= color_bar("turquoise")
+))
+
+
 ```
 
 
@@ -687,13 +822,35 @@ formattable(AdditiveBoth_count,
 t13 <- table(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`)
         # < 72 hours 2 weeks - 3 months   3 days - 2 weeks       not reported 
         #          2                 16                 42                  3 
+#t13 <- data.table(t13)
 
 # manually set levels 
 
+t13_sorted<- t13 %>% as.data.frame() %>% arrange(factor(Var1, levels = c("< 72 hours", "3 days - 2 weeks", "2 weeks - 3 months", "not reported")))
+
+# library(data.table)
+
+# setcolorder(t13$V1, c("< 72 hours", "3 days - 2 weeks", "2 weeks - 3 months", "not reported"))
+
+
 # barplot(table(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`), ylab = "Number of studies", cex.names=.5, col = "purple")
 
+# reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer` <- as.factor(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`)
+# 
+# levels(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`)
+# 
+# reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer` <- factor(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`, levels = c("< 72 hours", "3 days - 2 weeks", "2 weeks - 3 months", "not reported"))
+# 
+# levels(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`)
+# 
+# reconciled2 <- reconciled[order(levels(reconciled$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`)),]
+# 
+# t13 <- table(time_coculture$`5.2 How long were the liver models cultured after printing?_1f136f0a-786b-4e17-a97d-e5cf32f47b26_Answer`)
 
-text(x = barplot(t13, ylab = "Number of Studies", ylim=c(0, max(t13) + 10), cex.names=.8 , col = "purple", main = "How long were liver models cultured?"), y = t13 + 2, labels = t13, cex = 0.8)
+text(x = barplot(
+  `colnames<-`(t(t13_sorted[-1]), t13_sorted[,1]), 
+  # t(as.matrix(t13_sorted)), 
+  ylab = "Number of Studies", ylim=c(0, max(t13) + 10), cex.names=.8 , col = "purple", main = "How long were liver models cultured?"), y = t13_sorted$Freq + 2, labels = t13, cex = 0.8)
 
 ```
 
@@ -724,7 +881,6 @@ formattable(liverMarkers,
               "span", style = ~ style(color = "grey",font.weight = "bold")), 
               `n_studies_report`= color_bar("yellow")
 ))
-
 
 ```
 
@@ -882,6 +1038,11 @@ agonists <- separate_rows(agonists, agonistsComment, sep=";")
 
 # remove line breaks
 agonists$agonistsComment <- str_replace_all(agonists$agonistsComment, "[\n]" , "")
+# remove whitespace from start of str
+agonists$agonistsComment <- str_trim(agonists$agonistsComment, "left")
+
+# remove whitespace from end of str
+agonists$agonistsComment <- str_trim(agonists$agonistsComment, "right")
 
 agonists_count <- agonists %>%  group_by(agonist) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
 
@@ -905,6 +1066,30 @@ formattable(agonists_count,
 
 table(agonists$agonistsComment)
 
+agonists$study_ID
+
+agonists <- agonists %>%  
+mutate(agonistsComment = recode(agonistsComment, "rifampicin" = "Rifampicin")) %>% 
+mutate(agonistsComment = recode(agonistsComment, "Rifampicin " = "Rifampicin")) %>%   
+  mutate(agonistsComment = recode(agonistsComment, "phenobarbital" = "Phenobarbital")) %>%
+subset(study_ID != "0a2dc2f4-21ea-4770-bdf8-999c5be9a300")
+
+ 
+
+agonists_comment_count <- agonists %>%  group_by(agonistsComment) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+
+
+
+# remove NAs as they dont make sense
+agonists_comment_count <- agonists_comment_count %>%  
+                    drop_na(agonistsComment)
+
+formattable(agonists_comment_count,
+            align =c("l", "r"),
+            list(`Indicator Name` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold")), 
+              `n_unique`= color_bar(customPurple)
+))
 
 ```
 
