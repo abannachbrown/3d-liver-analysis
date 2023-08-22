@@ -6,7 +6,7 @@ output:
   html_document:
     code_folding: hide
 ---
-
+this is code to analyze the data
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
