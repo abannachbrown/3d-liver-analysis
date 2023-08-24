@@ -499,9 +499,9 @@ t16 <- table(freq_table_cell$cellDensity)
 
 #t16
 
-text(x = barplot(t16$cellDensity, ylab = "Number of Inks", ylim=c(0, max(t16$n) + 10), cex.names=1 , col = "#b2df8a"
-                 # , main = "What is the Reported Cell Density"
-                 ), y = t16$n + 2, labels = t16$cellDensity, cex = 1)
+ # text(x = barplot(t16$cellDensity, ylab = "Number of Inks", ylim=c(0, max(t16$n) + 10), cex.names=1 , col = "#b2df8a"
+ #                 # , main = "What is the Reported Cell Density"
+ #                 ), y = t16$n + 2, labels = t16$cellDensity, cex = 1)
 
 
 
