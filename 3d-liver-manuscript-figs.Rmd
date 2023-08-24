@@ -59,11 +59,16 @@ print_method <- reconciled %>%
                    `4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`) %>% 
                   separate_rows(`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`, sep="\\|")
 
+
+print_method <- print_method %>% 
+  mutate(`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`= recode(`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`, "Extrusion based" = "Extrusion")) %>% 
+  mutate(`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`= recode(`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`, "Inject based" = "Injection"))
+
 t1 <- table(print_method$`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`)
 
-# manually set levels 
+t1# manually set levels 
 
-t1_sorted<- t1 %>% as.data.frame() %>% arrange(factor(Var1, levels = c("Stereolithography", "Extrusion based", "Inject based", "Other", "Unclear")))
+t1_sorted<- t1 %>% as.data.frame() %>% arrange(factor(Var1, levels = c("Stereolithography", "Extrusion", "Injection", "Other", "Unclear")))
 
 data_bar1 <- t1_sorted$Freq
 names(data_bar1) <- t1_sorted$Var1
@@ -75,8 +80,9 @@ text(x = barplot(
  # 'labels' <- (t(t13_sorted[-1]), t13_sorted[,1])), 
   # t(as.matrix(t13_sorted)), 
    data_bar1,
-  ylab = "Number of Studies", ylim=c(0, max(data_bar1) + 10), cex.names=.8 , col = "green", main = "What kind of printing method was used?"), y = data_bar1 + 2, labels = data_bar1, 
-  cex = 0.8)
+  ylab = "Number of Studies", ylim=c(0, max(data_bar1) + 10), cex.names=1 , col = "#33a02c", #main = "What kind of printing method was used?"
+  ), y = data_bar1 + 2, labels = data_bar1, 
+  cex = 1)
 
 
 # text(x = barplot(t1, ylab = "Number of studies", ylim=c(0, max(t1) + 10), cex.names=0.8, col = "green", main = "What kind of printing method was used?", las=0), y = t1 + 2, labels = t1, cex = 0.8 )
@@ -112,8 +118,10 @@ text(x = barplot(
  # 'labels' <- (t(t13_sorted[-1]), t13_sorted[,1])), 
   # t(as.matrix(t13_sorted)), 
    data_bar4,
-  ylab = "Number of Studies", ylim=c(0, max(data_bar4) + 10), cex.names=.8 , col = "green", main = "What kind of forms are printed with this ink?"), y = data_bar4 + 2, labels = data_bar4, 
-  cex = 0.8)
+  ylab = "Number of Studies", ylim=c(0, max(data_bar4) + 10), cex.names=1 , col = "#33a02c"
+  #, main = "What kind of forms are printed with this ink?"
+  ), y = data_bar4 + 2, labels = data_bar4, 
+  cex = 1)
 
 # text(x = barplot(t4, ylab = "Number of studies", ylim=c(0, max(t4) + 10), cex.names=.8 , col = "green", main = "What kind of forms are printed with this ink?"), y = t4 + 2, labels = t4, cex = 0.8)
 
@@ -254,6 +262,7 @@ print_form_comment_other <- print_form_comment_other %>%
 # group by numbers
 commentsPrintForm <- print_form_comment_other %>%  group_by(comment) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
 
+names(commentsPrintForm) <- c("Printer Form", "Number of Unique Studies")
 
 #install.packages("formattable")
 library(formattable)
@@ -262,7 +271,7 @@ formattable(commentsPrintForm,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_unique`= color_bar("lightgreen")
+              `Number of Unique Studies`= color_bar("#33a02c")
 ))
 
 
@@ -481,11 +490,18 @@ options(scipen = 999)
 
 sorted <- cellDensity_num[order(as.numeric(as.character(cellDensity_num$cellDensity))), ]
 
-t16 <- table(sorted$cellDensity)
+freq_table_cell <- cellDensity_num %>% group_by(cellDensity) %>% 
+  summarise(n = n())
+
+t16 <- freq_table_cell[order(as.numeric(as.character(freq_table_cell$cellDensity))), ]
+
+t16 <- table(freq_table_cell$cellDensity)
 
 #t16
 
-text(x = barplot(t16, ylab = "Number of Inks", ylim=c(0, max(t16) + 10), cex.names=.8 , col = "grey", main = "What is the Reported Cell Density"), y = t16 + 2, labels = t16, cex = 0.8)
+text(x = barplot(t16$cellDensity, ylab = "Number of Inks", ylim=c(0, max(t16$n) + 10), cex.names=1 , col = "#b2df8a"
+                 # , main = "What is the Reported Cell Density"
+                 ), y = t16$n + 2, labels = t16$cellDensity, cex = 1)
 
 
 
@@ -504,7 +520,7 @@ options(scipen = 0)
 
 ### Figure 2c - Origin of BioInks 
 ```{r bioink-origin}
-t8 <- table(reconciled$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`)
+# t8 <- table(reconciled$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`)
 
 bioOrigin <-  reconciled %>%select(
   study_ID, 
@@ -512,10 +528,18 @@ bioOrigin <-  reconciled %>%select(
  #, `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`
   ) %>%  separate_rows(`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`, sep="\\|")
 
+
+bioOrigin <- bioOrigin %>% mutate(`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`= recode(`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`, "commercial (ready-to-use)" = "Commercial")) %>% mutate(`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`= recode(`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`,"custom formulated" = "Custom" ))
+
+
 t8 <- table(bioOrigin$`4.1.3.2.Â What is the origin of the bioink?_34ef46b6-34ac-4ddb-a5de-07bc74272fca_Answer`)
 
-text(x = barplot(t8, ylab = "Number of BioInks", ylim=c(0, max(t8) + 10), cex.names=0.8 , col = "blue", main = "What is the origin of BioInk"), y = t8 + 2, 
-     labels = t8, cex = 0.8)
+t8
+
+text(x = barplot(t8, ylab = "Number of BioInks", ylim=c(0, max(t8) + 10), cex.names=1 , col = "#b2df8a"
+                 #, main = "What is the origin of BioInk"
+                 ), y = t8 + 2, 
+     labels = t8, cex = 1)
 
 
 ```
@@ -543,13 +567,15 @@ custom_bioInk_count <- custom_bioInk %>%  group_by(infoProivded) %>% summarise(n
 custom_bioInk_count <- custom_bioInk_count %>%  
                     drop_na(infoProivded)
 
+names(custom_bioInk_count) <- c("Information Provided", "Number of Unique Studies")
+
 library(formattable)
 
 formattable(custom_bioInk_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_studies_report`= color_bar("lightblue")
+              `Number of Unique Studies`= color_bar("#b2df8a")
 ))
 
 
@@ -564,7 +590,9 @@ t11 <- table(custom_bioInk_studies$n_items_reported)
 
 #barplot(table(custom_bioInk_studies$n_items_reported), ylab = "Number of studies", cex.names=.7, col = "lightblue")
 
-text(x = barplot(t11, ylab = "Number of studies", ylim=c(0, max(t11) + 10), cex.names=.8 , col = "lightblue", main = "How many items were reported about custom-formulated bioink?"), y = t11 + 2, labels = t11, cex = 0.8)
+text(x = barplot(t11, ylab = "Number of studies", ylim=c(0, max(t11) + 10), cex.names=1 , col = "#b2df8a"
+                 , main = "How many items were reported about custom-formulated bioink?")
+     , y = t11 + 2, labels = t11, cex = 1)
 
 ```
 
