@@ -80,7 +80,7 @@ text(x = barplot(
  # 'labels' <- (t(t13_sorted[-1]), t13_sorted[,1])), 
   # t(as.matrix(t13_sorted)), 
    data_bar1,
-  ylab = "Number of Studies", ylim=c(0, max(data_bar1) + 10), cex.names=1 , col = "#33a02c", #main = "What kind of printing method was used?"
+  ylab = "Number of Studies", ylim=c(0, max(data_bar1) + 10), cex.names=1 , col = "#fb9a99", #main = "What kind of printing method was used?"
   ), y = data_bar1 + 2, labels = data_bar1, 
   cex = 1)
 
@@ -118,7 +118,7 @@ text(x = barplot(
  # 'labels' <- (t(t13_sorted[-1]), t13_sorted[,1])), 
   # t(as.matrix(t13_sorted)), 
    data_bar4,
-  ylab = "Number of Studies", ylim=c(0, max(data_bar4) + 10), cex.names=1 , col = "#33a02c"
+  ylab = "Number of Studies", ylim=c(0, max(data_bar4) + 10), cex.names=1 , col = "#fb9a99"
   #, main = "What kind of forms are printed with this ink?"
   ), y = data_bar4 + 2, labels = data_bar4, 
   cex = 1)
@@ -160,20 +160,40 @@ Print_bioink_re <- Print_bioink  %>% rename(
 
 
 #### needs to be 72 rows only!! - MH will supply which combo bioInk to Printer is correct from original study 
+# 487b3d85-d671-40f2-8d60-309a6aa9a4f3
+
+# Print_bioink_re <- within(Print_bioink_re, print_method[print_method == "Extrusion based|Stereolithography" & study_ID == '487b3d85-d671-40f2-8d60-309a6aa9a4f3'] <- 'John Smith1')
+
+Print_bioink_re$print_method <- as.character(Print_bioink_re$print_method)
+
+Print_bioink_re <- Print_bioink_re %>% mutate(print_method = ifelse(study_ID == '487b3d85-d671-40f2-8d60-309a6aa9a4f3', "Extrusion based", print_method))
+
+# Print_bioink_re[11, "print_method"] <- "Extrusion based"
+
+
 
 Print_bioink1_1 <- Print_bioink_re %>% 
                 separate_rows(print_method , sep="\\|")
 
 
-Print_bioink1_2 <- Print_bioink_re %>% 
-              separate_rows(typeGeneral_level1, sep="\\|") 
+Print_bioink1_2 <- Print_bioink_re %>%
+             separate_rows(typeGeneral_level1, sep="\\|")
 
-Print_bioink1$print_method <- as.factor(Print_bioink1$print_method)
-Print_bioink1$typeGeneral_level1 <- as.factor(Print_bioink1$typeGeneral_level1 )
+Print_bioink1_2$print_method <- as.factor(Print_bioink1_2$print_method)
+Print_bioink1_2$typeGeneral_level1 <- as.factor(Print_bioink1_2$typeGeneral_level1 )
   
+
+# 	487b3d85-d671-40f2-8d60-309a6aa9a4f3
+# extrusion was 
+# sterolithography
+
+
+
 # summary(Print_bioink1)
 
-Print_bioink1_sankey <- Print_bioink1 %>% select(study_ID, print_method, typeGeneral_level1)
+Print_bioink1_sankey <- Print_bioink1_2 %>% select(study_ID, print_method, typeGeneral_level1)
+
+Print_bioink1_sankey
 
 
 # create a table of frequencies
@@ -181,7 +201,9 @@ freq_table <- Print_bioink1_sankey %>% group_by(print_method, typeGeneral_level1
   summarise(n = n())
 
 freq_table <- freq_table %>% 
-   mutate(print_method= recode(print_method, "Unclear" = "Unclear - Method")) %>% 
+   mutate(print_method= recode(print_method, "Extrusion based" = "Extrusion")) %>% 
+     mutate(print_method= recode(print_method, "Unclear" = "Unclear - Method")) %>% 
+  mutate(print_method= recode(print_method, "Inject based" = "Injection")) %>% 
      mutate(typeGeneral_level1= recode(typeGeneral_level1, "Unclear" = "Unclear - Bioink"))
 
 
@@ -209,12 +231,13 @@ plot_ly(
   link = list(source = links$source,
               target = links$target,
               value = links$value),
-  textfont = list(size = 10),
+  textfont = list(size = 14),
   width = 720,
   height = 480
 ) %>%
-  layout(title = "Sankey Diagram: Print Method & Ink Type",
-         font = list(size = 14),
+  layout(
+    #title = "Sankey Diagram: Print Method & Ink Type",
+         font = list(size = 18),
          margin = list(t = 40, l = 10, r = 10, b = 10))
 
 
@@ -266,7 +289,7 @@ print_form_comment_other <- print_form_comment_other %>%
 # group by numbers
 commentsPrintForm <- print_form_comment_other %>%  group_by(comment) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
 
-names(commentsPrintForm) <- c("Printer Form", "Number of Unique Studies")
+names(commentsPrintForm) <- c("Printed Form", "Number of Unique Studies")
 
 #install.packages("formattable")
 library(formattable)
@@ -274,8 +297,11 @@ library(formattable)
 formattable(commentsPrintForm,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `Number of Unique Studies`= color_bar("#33a02c")
+              "span", 
+              style = ~ style(color = "grey",font.weight = "bold")), 
+              # `Number of Unique Studies`= formatter(style = ~ style( font.weight = "bold")), 
+              `Number of Unique Studies`= color_bar("#fb9a99")
+              
 ))
 
 
@@ -492,15 +518,28 @@ cellDensity_num$cellDensity <- str_trim(cellDensity_num$cellDensity, "right")
 options(scipen = 999)
 
 
-sorted <- cellDensity_num[order(as.numeric(as.character(cellDensity_num$cellDensity))), ]
+# sorted <- cellDensity_num[order(as.numeric(as.character(cellDensity_num$cellDensity))), ]
 
 freq_table_cell <- cellDensity_num %>% group_by(cellDensity) %>% 
   summarise(n = n())
 
 t16 <- freq_table_cell[order(as.numeric(as.character(freq_table_cell$cellDensity))), ]
 
-t16 <- table(freq_table_cell$cellDensity)
+ t16 <- table(freq_table_cell$cellDensity)
 
+ freq_table_cell
+ 
+# 
+# formattable(t16,
+#             align =c("l", "r"),
+#             list(`Indicator Name` = formatter(
+#               "span", 
+#               style = ~ style(color = "grey",font.weight = "bold")), 
+#               # `Number of Unique Studies`= formatter(style = ~ style( font.weight = "bold")), 
+#               `n`= color_bar("lightblue")
+#               
+# ))
+ 
 #t16
 
  # text(x = barplot(t16$cellDensity, ylab = "Number of Inks", ylim=c(0, max(t16$n) + 10), cex.names=1 , col = "#b2df8a"
@@ -628,8 +667,11 @@ text(x = barplot(
  # 'labels' <- (t(t13_sorted[-1]), t13_sorted[,1])), 
   # t(as.matrix(t13_sorted)), 
    data_bar9,
-  ylab = "Number of Studies", ylim=c(0, max(data_bar9) + 10), cex.names=.8 , col = "turquoise", main = "What kind of forms are printed with this ink?"), y = data_bar9 + 2, labels = data_bar9, 
-  cex = 0.8)
+  ylab = "Number of Studies", ylim=c(0, max(data_bar9) + 10), cex.names=1 , col = "#1f78b4",
+  # main = "What kind of forms are printed with this ink?"
+  ), 
+y = data_bar9 + 2, labels = data_bar9, 
+  cex = 1)
 
 #barplot(table(reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`), ylab = "Number of studies", cex.names=.5, col = "turquoise")
 
@@ -692,14 +734,18 @@ commentsLiver <- commentsLiver %>%
                     drop_na(liverCellsComment)
 
 
+
+names(commentsLiver) <- c("Type of Liver Cells", "Number of Unique Studies")
+
+
 #install.packages("formattable")
 library(formattable)
 
 formattable(commentsLiver,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_unique`= color_bar("turquoise")
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar("#1f78b4")
 ))
 
 ```
@@ -728,13 +774,16 @@ nonParanchymal_count <- nonParanchymal_count %>%
 
                     drop_na(nonParanchymalCellType)
 
+
+names(nonParanchymal_count) <- c("Paranchymal Cell Type", "Number of Unique Studies")
+
 library(formattable)
 
 formattable(nonParanchymal_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_studies_report`= color_bar("turquoise")
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar("#1f78b4")
 ))
 
 ```
@@ -764,7 +813,9 @@ hist(countsMetaDat$n_unique, xlab = "Number of Meta-Data Items Reported", ylab =
  countsMetaDat$n_unique <- as.factor(countsMetaDat$n_unique)
 
 
-text(x = barplot(t10, ylab = "Number of Meta-Data Items", ylim=c(0, max(t10) + 10), cex.names=.8 , col = "turquoise", main = "How many meta-data items are reported about the liver cells?"), y = t10 + 2, labels = t10, cex = 0.8)
+text(x = barplot(t10, ylab = "Number of Meta-Data Items", ylim=c(0, max(t10) + 10), cex.names=1, col = "#1f78b4"
+                 #, main = "How many meta-data items are reported about the liver cells?"
+                 ), y = t10 + 2, labels = t10, cex = 1)
 
 
 ```
@@ -789,13 +840,15 @@ liverAdditive <- separate_rows(liverAdditive, additive, sep=";")
 # group by numbers
 liverAdditive_count <- liverAdditive %>%  group_by(additive) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
 
+names(liverAdditive_count) <- c("Liver Additive Type", "Number of Unique Studies")
+
 library(formattable)
 
 formattable(liverAdditive_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_studies_report`= color_bar("turquoise")
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar("#1f78b4")
 ))
 
 
@@ -924,13 +977,16 @@ additivesCombo <-  additivesCombo %>% unite("additives_all", c("additive_animal"
 
 additivesCombo_count <- additivesCombo %>%  group_by(additives_all) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
 
+
+names(additivesCombo_count) <- c("Liver Additive Type", "Number of Unique Studies")
+
 library(formattable)
 
 formattable(additivesCombo_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_studies_report`= color_bar("turquoise")
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar("#1f78b4")
 ))
 
 
@@ -975,14 +1031,17 @@ data_bar13 <- t13_sorted$Freq
 names(data_bar13) <- t13_sorted$Var1
 
 
+
 barplot(data_bar13)
 text(x = barplot(
 #  colnames<-(t(t13_sorted[-1]), t13_sorted[,1]), 
  # 'labels' <- (t(t13_sorted[-1]), t13_sorted[,1])), 
   # t(as.matrix(t13_sorted)), 
    data_bar13,
-  ylab = "Number of Studies", ylim=c(0, max(data_bar13) + 10), cex.names=.8 , col = "purple", main = "How long were liver models cultured?"), y = data_bar13 + 2, labels = data_bar13, 
-  cex = 0.8)
+  ylab = "Number of Studies", ylim=c(0, max(data_bar13) + 10), cex.names=1 , col = "#a6cee3"
+  #, main = "How long were liver models cultured?"
+  ), y = data_bar13 + 2, labels = data_bar13, 
+  cex = 1)
 
 ```
 
@@ -1002,7 +1061,7 @@ liverMarkers <- separate_rows(liverMarkers, liverMarker, sep=";")
 # group by numbers
 liverMarkers <- liverMarkers %>%  group_by(liverMarker) %>% summarise(n_studies_report = length(unique(study_ID))) %>%  arrange(desc(n_studies_report))
 
-
+names(liverMarkers) <- c("Liver Marker Type", "Number of Unique Studies")
 
 #install.packages("formattable")
 library(formattable)
@@ -1010,8 +1069,8 @@ library(formattable)
 formattable(liverMarkers,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_studies_report`= color_bar("yellow")
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar("#a6cee3")
 ))
 
 ```
@@ -1042,14 +1101,17 @@ liverMetabolite <- liverMetabolite %>%  group_by(metabolite) %>% summarise(n_uni
 liverMetabolite <- liverMetabolite[liverMetabolite$metabolite != "None" ,]
 
 
+
+names(liverMetabolite) <- c("Liver Metabolite Type", "Number of Unique Studies")
+
 #install.packages("formattable")
 library(formattable)
 
 formattable(liverMetabolite,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_unique`= color_bar("yellow")
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar("#a6cee3")
 ))
 
 
@@ -1095,11 +1157,14 @@ liverCytochome_only_count$cytochrome
 liverCytochome_only_count <- liverCytochome_only_count %>% 
   mutate(cytochrome = recode(cytochrome, "YP2C" = "CYP2C"))
 
+
+names(liverCytochome_only_count) <- c("Liver Cytochrome Type", "Number of Unique Studies")
+
 formattable(liverCytochome_only_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_unique`= color_bar("yellow")
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar("#a6cee3")
 ))
 
 
@@ -1113,7 +1178,9 @@ formattable(liverCytochome_only_count,
 t14 <- table(reconciled$`5.1 Does the study report the storage conditions of the printed models?_0adebee3-f3bc-4b01-a756-f8a93dc7b5bc_Answer`)
 
 
-text(x = barplot(t14, ylab = "Number of Studies", ylim=c(0, max(t14) + 10), cex.names=.8 , col = "purple", main = "Were storage conditions reported?"), y = t14 + 2, labels = t14, cex = 0.8)
+text(x = barplot(t14, ylab = "Number of Studies", ylim=c(0, max(t14) + 10), cex.names=1 , col = "#a6cee3"
+                 #, main = "Were storage conditions reported?"
+                 ), y = t14 + 2, labels = t14, cex = 1)
 
 
 ```
@@ -1140,14 +1207,15 @@ assays <- assays %>%  group_by(assay) %>% summarise(n_unique = length(unique(stu
 assays <- assays %>%  
                     drop_na(assay)
 
+names(assays) <- c("Assay", "Number of Unique Studies")
 
-customPurple = "#C5B4E3"
+customPurple = "#a6cee3"
 
 formattable(assays,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_unique`= color_bar(customPurple)
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar(customPurple)
 ))
 
 
@@ -1187,17 +1255,18 @@ agonists_count <- agonists %>%  group_by(agonist) %>% summarise(n_unique = lengt
 # remove NAs/None as they dont make sense
 # liverMetabolite <- liverMetabolite[liverMetabolite$metabolite != "None" ,]
 
+names(agonists_count) <- c("Agonist", "Number of Unique Studies")
 
 #install.packages("formattable")
 library(formattable)
 
-customPurple = "#C5B4E3"
+customPurple = "#a6cee3"
 
 formattable(agonists_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_unique`= color_bar(customPurple)
+              "Number of Unique Studies"= color_bar(customPurple)
 ))
 
 
@@ -1221,11 +1290,16 @@ agonists_comment_count <- agonists %>%  group_by(agonistsComment) %>% summarise(
 agonists_comment_count <- agonists_comment_count %>%  
                     drop_na(agonistsComment)
 
+
+names(agonists_comment_count) <- c("Agonist", "Number of Unique Studies")
+
+customPurple = "#a6cee3"
+
 formattable(agonists_comment_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_unique`= color_bar(customPurple)
+              "Number of Unique Studies"= color_bar(customPurple)
 ))
 
 ```
@@ -1266,16 +1340,18 @@ applications_count <- applications %>%  group_by(application) %>% summarise(n_un
 applications_count <- applications_count %>%  
                     drop_na(application)
 
+names(applications_count) <- c("Application", "Number of Unique Studies")
+
 #install.packages("formattable")
 library(formattable)
 
-customPurple = "#C5B4E3"
+customPurple = "#a6cee3"
 
 formattable(applications_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              `n_unique`= color_bar("lightgrey")
+              "span", style = ~ style(color = "black",font.weight = "bold")), 
+              "Number of Unique Studies"= color_bar(customPurple)
 ))
 
 
@@ -1290,8 +1366,66 @@ formattable(applications_count,
 
 
 
+### Cell Types Over Times
+```{r cell-type-time}
+
+
+# same cells as figure 3a & 3b
+
+liver_cells <- reconciled %>% 
+  mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Hepatoma cells;Other" = "Combination")) %>% 
+   mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Primary cells;Other" = "Combination")) %>% 
+  mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "primary cells" = "Primary cells"))%>% 
+  mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Induced pluripotent stem cells" = "iPSCs")) 
+
+
+t9 <- table(liver_cells$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`)
+
+
+t9_sorted<- t9 %>% as.data.frame() %>% arrange(factor(Var1, levels = c("Hepatoma cells", "iPSCs", "Primary cells", "Combination", "Other")))
+
+data_bar9 <- t9_sorted$Freq
+names(data_bar9) <- t9_sorted$Var1
+
+
+
+
+printer_form_year<- table(printer_forms$`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, printer_forms$NA_Year)
+
+
+printer_form_yearDF <- as.data.frame(printer_form_year)
+# long to wide 
+printer_form_yearDF <- printer_form_yearDF %>% spread(
+   key = Var2, 
+   value = Freq)
+
+
+# printer_form_yearDF 
+# names(printer_form_yearDF) <- gsub(x = names(printer_form_yearDF), pattern = "X", replacement = "")  
+
+
+library(formattable)
+
+formattable(printer_form_yearDF,
+            #align =c("l", "r"),
+            list(
+              `Indicator Name` = formatter(
+              "span", 
+              style = ~ style(color = "grey",font.weight = "bold")), 
+             area(row = 1:4) ~ color_tile("white", "green")))
+
+
+
+```
+
+
+
+
+
+
 ### Printer Forms Over Times
 ```{r printer-forms-time}
+
 
 
 printer_form_year<- table(printer_forms$`4.1.4 What kind of forms are printed with this ink?_01d3ca37-1e2f-4087-8f39-c183f98f0c4e_Answer`, printer_forms$NA_Year)
