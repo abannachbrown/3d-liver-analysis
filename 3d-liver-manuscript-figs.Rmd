@@ -5,6 +5,7 @@ date: "2023-07-26"
 output: 
   html_document:
     code_folding: hide
+    fig_width: 10
 ---
 this is code to analyze the data
 ```{r setup, include=FALSE}
@@ -19,7 +20,7 @@ data <- openxlsx::read.xlsx("final_data_after_cleaning0803.xlsx", fillMergedCell
 
 names(data) <- paste(data[1, ], data[2, ], sep = "_")
 names(data)[1] <- "study_ID"
-# Get rid of first two rows and columns 
+# Get rid of first two rows 
 data <- data[-c(1:2), ]
 
 # clean column names
@@ -28,6 +29,8 @@ library(janitor)
 clean_names(data)
 # remove brackets so can search by numbers
 colnames(data) <-  gsub("\\(|)","",colnames(data))
+
+# ata$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`
 
 ## get only reconciled
 reconciled <- data %>% subset(data$`NOT to be answered by REVIEWER Has the study been reconciled?_cb623db2-5f5e-4676-9497-f22d4d58fd02_Answer` == "Yes") 
@@ -66,7 +69,7 @@ print_method <- print_method %>%
 
 t1 <- table(print_method$`4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`)
 
-t1# manually set levels 
+#t1# manually set levels 
 
 t1_sorted<- t1 %>% as.data.frame() %>% arrange(factor(Var1, levels = c("Stereolithography", "Extrusion", "Injection", "Other", "Unclear")))
 
@@ -231,9 +234,9 @@ plot_ly(
   link = list(source = links$source,
               target = links$target,
               value = links$value),
-  textfont = list(size = 14),
-  width = 720,
-  height = 480
+  textfont = list(size = 18, color = "black"),
+  width = 820,
+  height = 580
 ) %>%
   layout(
     #title = "Sankey Diagram: Print Method & Ink Type",
@@ -298,9 +301,10 @@ formattable(commentsPrintForm,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", 
-              style = ~ style(color = "grey",font.weight = "bold")), 
+              style = ~ style(color = "grey",font.weight = "bold", font.size = "16px")), 
               # `Number of Unique Studies`= formatter(style = ~ style( font.weight = "bold")), 
-              `Number of Unique Studies`= color_bar("#fb9a99")
+              `Number of Unique Studies`= color_bar("#fb9a99"), 
+              table.attr = 'style="font-size: 16px;";\"'
               
 ))
 
@@ -319,15 +323,19 @@ Interactive Sunburst plot - hover over each section to see the number of experim
 
 library(plotme)
 
+library(dplyr)
+
 # type --> 
 bioink <- reconciled %>% select(
   study_ID, 
     `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
     `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
-    `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+    `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
 `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
   )  
 
+# reconciled$`4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`
 
 bioink <- bioink  %>% rename(typeGeneral_level1 = `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
    typeNatural_level2 = `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
@@ -340,88 +348,98 @@ bioink <- bioink  %>% rename(typeGeneral_level1 = `4.1.3 What type of bioink was
 
 ### other is Matrigel
 
-bioink_split1 <- separate_rows(bioink, typeGeneral_level1 , sep="\\|")
-bioink_split1_1 <- separate_rows(bioink_split1, typeNatural_level2 , sep="\\|")
-bioink_split1_2 <- separate_rows(bioink_split1_1, typeProtein_level3 , sep="\\|")
-bioink_split1_3 <- separate_rows(bioink_split1_2, typePoly_level3 , sep="\\|")
-
-bioink_split2 <- separate_rows(bioink_split1_3, typeNatural_level2 , sep=";")
-bioink_split3 <- separate_rows(bioink_split2, typeProtein_level3 , sep=";")
-bioink_split3 <- separate_rows(bioink_split3, typePoly_level3 , sep=";")
-# 164 rows
-
-test_bio <- bioink_split1_3 %>%
-     mutate(
-typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
-typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
-typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
-typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
-            )
-
-
-test_bio$typeSynthetic_level2 <- as.character(test_bio$typeSynthetic_level2)
-  
-
-### merge level 2 & merge level 3 
-test_bio$level3 <- ifelse(!is.na(test_bio$typeProtein_level3), test_bio$typeProtein_level3, test_bio$typePoly_level3)
-test_bio$level2 <- ifelse(!is.na(test_bio$typeNatural_level2), test_bio$typeNatural_level2, test_bio$typeSynthetic_level2)
-
-  
-# table(test_bio$level3)
-
-
-# rename answers to more easily group them
-# test_bio <- test_bio %>% 
-#       mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>% 
-#       mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
-# # %>%      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
+# bioink_split1 <- separate_rows(bioink, typeGeneral_level1 , sep="\\|")
+# 
+# 
+# #bioink_split1_1 <- separate_rows(bioink_split1, typeNatural_level2 , sep="\\|")
+# #bioink_split1_2 <- separate_rows(bioink_split1_1, typeProtein_level3 , sep="\\|")
+# #bioink_split1_3 <- separate_rows(bioink_split1_2, typePoly_level3 , sep="\\|")
+# 
+# bioink_split2 <- separate_rows(bioink_split1_3, typeNatural_level2 , sep=";")
+# bioink_split3 <- separate_rows(bioink_split2, typeProtein_level3 , sep=";")
+# bioink_split3 <- separate_rows(bioink_split3, typePoly_level3 , sep=";")
+# # 164 rows
+# 
+# test_bio <- bioink_split1_3 %>%
+#      mutate(
+# typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
+# typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
+# typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
+# typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
+#             )
+# 
+# 
+# test_bio$typeSynthetic_level2 <- as.character(test_bio$typeSynthetic_level2)
 #   
-  
+# 
+# ### merge level 2 & merge level 3 
+# test_bio$level3 <- ifelse(!is.na(test_bio$typeProtein_level3), test_bio$typeProtein_level3, test_bio$typePoly_level3)
+# test_bio$level2 <- ifelse(!is.na(test_bio$typeNatural_level2), test_bio$typeNatural_level2, test_bio$typeSynthetic_level2)
+# 
+#   
+# # table(test_bio$level3)
+# 
+# 
+# # rename answers to more easily group them
+# # test_bio <- test_bio %>% 
+# #       mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>% 
+# #       mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
+# # # %>%      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG"))  
+# #   
+#   
 
 
 #################### update after discussion with experts on interpretation
 bioink_split1 <- separate_rows(bioink, typeGeneral_level1 , sep="\\|")
 
-bioInk_72 <- bioink_split1 %>%
-     mutate(
-typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), 
-typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), 
-typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
-typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
-typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
-typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
-            )
-
+### fill in NAs 
 # turn all cols to character
 bioInk_72 <- bioink_split1 %>%
   mutate(across(everything(), as.character))
 
+bioInk_72 <- bioink_split1 %>%
+     mutate(
+typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), 
+typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), 
+#typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
+#typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
+#typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
+typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA) 
+# typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
+            )
+
 #str(bioInk_72)
 
 ##### level 3 
-bioInk_72$level3 <- paste(bioInk_72$typeProtein_level3, bioInk_72$typePoly_level3)
+bioInk_72$level3 <- apply(bioInk_72[, c("typeProtein_level3", "typePoly_level3")], 1,
+                      function(i){ paste(na.omit(i), collapse = " ") })
 
-bioInk_72$level3 <- ifelse(!is.na(bioInk_72$typeProtein_level3),  bioInk_72$typeProtein_level3, bioInk_72$typePoly_level3)
+# bioInk_72$level3 <- paste(bioInk_72$typeProtein_level3, bioInk_72$typePoly_level3)
+
+# bioInk_72$level3 <- ifelse(!is.na(bioInk_72$typeProtein_level3),  bioInk_72$typeProtein_level3, bioInk_72$typePoly_level3)
 
 # bioInk_72$level2 <- ifelse(!is.na(bioInk_72$typeNatural_level2), bioInk_72$typeNatural_level2, bioInk_72$typeSynthetic_level2)
 
 # bioInk_72$level3 <- ifelse(bioInk_72$typeNatural_level2 == "Protein based", bioInk_72$typeProtein_level3, NA)
 
 ############# level 2
-bioInk_72$level2 <- ifelse(bioInk_72$typeGeneral_level1 == "Synthetic", bioInk_72$typeSynthetic_level2, NA)
+# bioInk_72$level2 <- ifelse(bioInk_72$typeGeneral_level1 == "Synthetic", bioInk_72$typeSynthetic_level2, NA)
+# 
+# bioInk_72$level2 <- ifelse(!is.na(bioInk_72$level2), bioInk_72$typeNatural_level2, bioInk_72$typeSynthetic_level2)
+# 
+# bioInk_72$level2 <- ifelse(!is.na(bioInk_72$typeNatural_level2), bioInk_72$typeSynthetic_level2, bioInk_72$typeNatural_level2)
+# 
+# 
+# #### this works! 
+# bioInk_72$level2 <- ifelse(bioInk_72$typeGeneral_level1 == "Synthetic", bioInk_72$typeSynthetic_level2, bioInk_72$typeNatural_level2)
 
-bioInk_72$level2 <- ifelse(!is.na(bioInk_72$level2), bioInk_72$typeNatural_level2, bioInk_72$typeSynthetic_level2)
-
-bioInk_72$level2 <- ifelse(!is.na(bioInk_72$typeNatural_level2), bioInk_72$typeSynthetic_level2, bioInk_72$typeNatural_level2)
-
-
-#### this works! 
-bioInk_72$level2 <- ifelse(bioInk_72$typeGeneral_level1 == "Synthetic", bioInk_72$typeSynthetic_level2, bioInk_72$typeNatural_level2)
-
+##### level 3 
+bioInk_72$level2 <- apply(bioInk_72[, c("typeNatural_level2", "typeSynthetic_level2")], 1,
+                      function(i){ paste(na.omit(i), collapse = " ") })
 
 
 #table(bioInk_72$level2)
-table(bioInk_72$level3)
+#table(bioInk_72$level3)
 
 
 # if(bioInk_72$typeGeneral_level1 == "Synthetic"){
@@ -434,24 +452,41 @@ table(bioInk_72$level3)
 #   
 
 
+#### rename the columns 
 # rename answers to more easily group them
-bioInk_72 <- bioInk_72 %>%
+bioInk_73 <- bioInk_72 %>%
       mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>%
       mutate(level3 = recode(level3, "Collagens;Gelatin" = "Collagen+Gelatin")) %>%
       mutate(level3 = recode(level3, "Collagens|Collagens" = "Collagen")) %>%
       mutate(level3 = recode(level3, "Gelatin|Gelatin" = "Gelatin")) %>%
       mutate(level3 = recode(level3, "Gelatin;Silk-fibroin" = "Gelatin+Silk-fibroin")) %>%
       mutate(level3 = recode(level3, "Gelatin;Fibrinogen" = "Gelatin+Fibrinogen")) %>%
+  
+  mutate(level3 = recode(level3, "Collagens;Gelatin Alginates" = "Collagen+Gelatin+Alginates")) %>%
+  mutate(level3 = recode(level3, "Alginates;Other" = "Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Gelatin Alginates" = "Gelatin+Alginates")) %>%
+  mutate(level3 = recode(level3, "Collagens Alginates" = "Collagen+Alginates")) %>%
+  mutate(level3 = recode(level3, "Fibrinogen Alginates" = "Fibrinogen+Alginates")) %>%
+  
+  mutate(level3 = recode(level3, "Gelatin Alginates;Other" = "Gelatin+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Fibrinogen;Other Alginates;Other" = "Fibrinogen+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Collagens|Collagens Hyaluronic acid|Hyaluronic acid" = "Collagen+Hyaluronic acid")) %>%
+  mutate(level3 = recode(level3, "Gelatin;Other Alginates" = "Gelatin+Alginates+Other")) %>%
+  
+  mutate(level3 = recode(level3, "Gelatin;Other Alginates;Other" = "Gelatin+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Gelatin Chitosan" = "Gelatin+Chitosan")) %>%
+  mutate(level3 = recode(level3, "Gelatin Hyaluronic acid" = "Gelatin+Hyaluronic acid")) %>%
+  
       mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG")) %>% 
       mutate(level2 = recode(level2, "Protein based" = "Protein")) %>% 
       mutate(level2 = recode(level2, "Polysaccharide based" = "Polysaccharide")) %>% 
       mutate(level2 = recode(level2, "dECM based" = "dECM")) %>% 
-      mutate(level2 = recode(level2, "Protein based;Polysaccharide based" = "Protein + Poly")) %>% 
-mutate(level2 = recode(level2, "Protein based;dECM based" = "Protein + dECM")) %>% 
-mutate(level2 = recode(level2, "Polysaccharide based;dECM based" = "Poly + dECM")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based" = "Protein+Poly")) %>% 
+mutate(level2 = recode(level2, "Protein based;dECM based" = "Protein+dECM")) %>% 
+mutate(level2 = recode(level2, "Polysaccharide based;dECM based" = "Poly+dECM")) %>% 
       mutate(level2 = recode(level2, "Protein based;Polysaccharide based;Other" = "Protein+Poly+MatriGel")) %>% 
       mutate(level2 = recode(level2, "Protein based;Polysaccharide based;dECM based" = "Protein+Poly+dECM")) %>% 
-      mutate(level2 = recode(level2, "Protein based;Polysaccharide based|Protein based;Polysaccharide based" = "Protein + Poly")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based|Protein based;Polysaccharide based" = "Protein+Poly")) %>% 
       mutate(level2 = recode(level2, "Protein based|Protein based" = "Protein"))
   
 #  Protein based|dECM based
@@ -461,8 +496,10 @@ mutate(level2 = recode(level2, "Polysaccharide based;dECM based" = "Poly + dECM"
 # bioInk_72[14, "level2"] <- "dECM based"
 
 
-bioInk_72[30, "level2"] <- "Protein based"
-bioInk_72[31, "level2"] <- "dECM based"
+bioInk_73[30, "level2"] <- "Protein"
+bioInk_73[31, "level2"] <- "dECM "
+
+
 
 
 # other in "not reported" should be removed
@@ -473,7 +510,7 @@ library(dplyr)
 library(plotme)
 
 
-bioInk_count <-  count(bioInk_72, 
+bioInk_count <-  count(bioInk_73, 
                        typeGeneral_level1, 
                        level2,
                        level3
@@ -527,7 +564,8 @@ t16 <- freq_table_cell[order(as.numeric(as.character(freq_table_cell$cellDensity
 
  t16 <- table(freq_table_cell$cellDensity)
 
- freq_table_cell
+ 
+formattable(freq_table_cell)
  
 # 
 # formattable(t16,
@@ -667,7 +705,7 @@ text(x = barplot(
  # 'labels' <- (t(t13_sorted[-1]), t13_sorted[,1])), 
   # t(as.matrix(t13_sorted)), 
    data_bar9,
-  ylab = "Number of Studies", ylim=c(0, max(data_bar9) + 10), cex.names=1 , col = "#1f78b4",
+  ylab = "Number of Studies", ylim=c(0, max(data_bar9) + 10), cex.names=1 , col = "#eed4f9",
   # main = "What kind of forms are printed with this ink?"
   ), 
 y = data_bar9 + 2, labels = data_bar9, 
@@ -745,7 +783,7 @@ formattable(commentsLiver,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", style = ~ style(color = "black",font.weight = "bold")), 
-              "Number of Unique Studies"= color_bar("#1f78b4")
+              "Number of Unique Studies"= color_bar("#eed4f9")
 ))
 
 ```
@@ -783,7 +821,7 @@ formattable(nonParanchymal_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", style = ~ style(color = "black",font.weight = "bold")), 
-              "Number of Unique Studies"= color_bar("#1f78b4")
+              "Number of Unique Studies"= color_bar("#eed4f9")
 ))
 
 ```
@@ -813,7 +851,7 @@ hist(countsMetaDat$n_unique, xlab = "Number of Meta-Data Items Reported", ylab =
  countsMetaDat$n_unique <- as.factor(countsMetaDat$n_unique)
 
 
-text(x = barplot(t10, ylab = "Number of Meta-Data Items", ylim=c(0, max(t10) + 10), cex.names=1, col = "#1f78b4"
+text(x = barplot(t10, ylab = "Number of Meta-Data Items", ylim=c(0, max(t10) + 10), cex.names=1, col = "#eed4f9"
                  #, main = "How many meta-data items are reported about the liver cells?"
                  ), y = t10 + 2, labels = t10, cex = 1)
 
@@ -848,7 +886,7 @@ formattable(liverAdditive_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", style = ~ style(color = "black",font.weight = "bold")), 
-              "Number of Unique Studies"= color_bar("#1f78b4")
+              "Number of Unique Studies"= color_bar("#eed4f9")
 ))
 
 
@@ -986,7 +1024,7 @@ formattable(additivesCombo_count,
             align =c("l", "r"),
             list(`Indicator Name` = formatter(
               "span", style = ~ style(color = "black",font.weight = "bold")), 
-              "Number of Unique Studies"= color_bar("#1f78b4")
+              "Number of Unique Studies"= color_bar("#eed4f9")
 ))
 
 
@@ -1272,7 +1310,7 @@ formattable(agonists_count,
 
 table(agonists$agonistsComment)
 
-agonists$study_ID
+# agonists$study_ID
 
 agonists <- agonists %>%  
 mutate(agonistsComment = recode(agonistsComment, "rifampicin" = "Rifampicin")) %>% 
@@ -1371,9 +1409,16 @@ formattable(applications_count,
 
 
 # same cells as figure 3a & 3b
+# 
+# reconciled[,40] <- as.character(reconciled[,40])
+# 
+# reconciled
+# 
+# reconciled$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`
 
 liver_cells <- reconciled %>% 
-  mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Hepatoma cells;Other" = "Combination")) %>% 
+#  mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`,  "Hepatoma cells;Other" = "Combination")) 
+# %>% 
    mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Primary cells;Other" = "Combination")) %>% 
   mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "primary cells" = "Primary cells"))%>% 
   mutate(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer` = recode(`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`, "Induced pluripotent stem cells" = "iPSCs")) 
