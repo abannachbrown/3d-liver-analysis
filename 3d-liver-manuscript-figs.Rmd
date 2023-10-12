@@ -401,41 +401,42 @@ bioInk_72 <- bioink_split1 %>%
      mutate(
 typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), 
 typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), 
+
 #typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
-#typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
+typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
 #typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
-typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA) 
+typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA), 
+
+
 # typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
             )
 
-#str(bioInk_72)
 
-##### level 3 
-bioInk_72$level3 <- apply(bioInk_72[, c("typeProtein_level3", "typePoly_level3")], 1,
-                      function(i){ paste(na.omit(i), collapse = " ") })
 
+
+ ##### level 2 
+ bioInk_72$level2 <- apply(bioInk_72[, c("typeNatural_level2", "typeSynthetic_level2")], 1, 
+                           function(i){ paste(na.omit(i), collapse = " ") })
+
+ ##### level 3 
+ bioInk_72$level3 <- apply(bioInk_72[, c("typeProtein_level3", "typePoly_level3")], 1,
+                       function(i){ paste(na.omit(i), collapse = " ") })
+
+ 
 # bioInk_72$level3 <- paste(bioInk_72$typeProtein_level3, bioInk_72$typePoly_level3)
 
 # bioInk_72$level3 <- ifelse(!is.na(bioInk_72$typeProtein_level3),  bioInk_72$typeProtein_level3, bioInk_72$typePoly_level3)
-
 # bioInk_72$level2 <- ifelse(!is.na(bioInk_72$typeNatural_level2), bioInk_72$typeNatural_level2, bioInk_72$typeSynthetic_level2)
-
 # bioInk_72$level3 <- ifelse(bioInk_72$typeNatural_level2 == "Protein based", bioInk_72$typeProtein_level3, NA)
 
 ############# level 2
 # bioInk_72$level2 <- ifelse(bioInk_72$typeGeneral_level1 == "Synthetic", bioInk_72$typeSynthetic_level2, NA)
-# 
 # bioInk_72$level2 <- ifelse(!is.na(bioInk_72$level2), bioInk_72$typeNatural_level2, bioInk_72$typeSynthetic_level2)
-# 
-# bioInk_72$level2 <- ifelse(!is.na(bioInk_72$typeNatural_level2), bioInk_72$typeSynthetic_level2, bioInk_72$typeNatural_level2)
-# 
-# 
+## bioInk_72$level2 <- ifelse(!is.na(bioInk_72$typeNatural_level2), bioInk_72$typeSynthetic_level2, bioInk_72$typeNatural_level2)
 # #### this works! 
 # bioInk_72$level2 <- ifelse(bioInk_72$typeGeneral_level1 == "Synthetic", bioInk_72$typeSynthetic_level2, bioInk_72$typeNatural_level2)
 
-##### level 3 
-bioInk_72$level2 <- apply(bioInk_72[, c("typeNatural_level2", "typeSynthetic_level2")], 1,
-                      function(i){ paste(na.omit(i), collapse = " ") })
+
 
 
 #table(bioInk_72$level2)
@@ -476,10 +477,9 @@ bioInk_73 <- bioInk_72 %>%
   mutate(level3 = recode(level3, "Gelatin;Other Alginates;Other" = "Gelatin+Alginates+Other")) %>%
   mutate(level3 = recode(level3, "Gelatin Chitosan" = "Gelatin+Chitosan")) %>%
   mutate(level3 = recode(level3, "Gelatin Hyaluronic acid" = "Gelatin+Hyaluronic acid")) %>%
-  
       mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG")) %>% 
       mutate(level2 = recode(level2, "Protein based" = "Protein")) %>% 
-      mutate(level2 = recode(level2, "Polysaccharide based" = "Polysaccharide")) %>% 
+      mutate(level2 = recode(level2, "Polysaccharide based" = "Poly")) %>% 
       mutate(level2 = recode(level2, "dECM based" = "dECM")) %>% 
       mutate(level2 = recode(level2, "Protein based;Polysaccharide based" = "Protein+Poly")) %>% 
 mutate(level2 = recode(level2, "Protein based;dECM based" = "Protein+dECM")) %>% 
@@ -487,7 +487,9 @@ mutate(level2 = recode(level2, "Polysaccharide based;dECM based" = "Poly+dECM"))
       mutate(level2 = recode(level2, "Protein based;Polysaccharide based;Other" = "Protein+Poly+MatriGel")) %>% 
       mutate(level2 = recode(level2, "Protein based;Polysaccharide based;dECM based" = "Protein+Poly+dECM")) %>% 
       mutate(level2 = recode(level2, "Protein based;Polysaccharide based|Protein based;Polysaccharide based" = "Protein+Poly")) %>% 
-      mutate(level2 = recode(level2, "Protein based|Protein based" = "Protein"))
+      mutate(level2 = recode(level2, "Protein based|Protein based" = "Protein")) %>% 
+      mutate(typeGeneral_level1 = recode(typeGeneral_level1, "Not reported" = "NR")        
+             )
   
 #  Protein based|dECM based
 # which(bioInk_72$level2 == "Protein based|dECM based")
@@ -510,16 +512,41 @@ library(dplyr)
 library(plotme)
 
 
-bioInk_count <-  count(bioInk_73, 
+bioInk_count_simple <-  count(bioInk_73, 
                        typeGeneral_level1, 
-                       level2,
-                       level3
+                       level2
+                       # , level3
                        #,study_ID
                        )
 
 
+bioInk_count_suppl <-  count(bioInk_73, 
+                       typeGeneral_level1, 
+                       level2
+                        , level3
+                       #,study_ID
+                       )
+
 # sunburst plot
-plotme::count_to_sunburst(bioInk_count)
+plotme::count_to_sunburst(bioInk_count_simple
+                          
+                          ,sort_by_n = TRUE 
+                          
+                          # ,fill_by_n = TRUE
+
+                                            )
+
+
+# link to raw function code: https://github.com/yogevherz/plotme/blob/master/R/count_to_sunburst_treemap.R 
+
+plotme::count_to_sunburst(bioInk_count_suppl
+                          
+                          ,sort_by_n = TRUE 
+                          
+                          # ,fill_by_n = TRUE
+                          )
+
+
 
 ```
 
