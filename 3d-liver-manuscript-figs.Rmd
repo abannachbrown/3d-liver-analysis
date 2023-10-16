@@ -510,14 +510,26 @@ bioInk_73[31, "level2"] <- "dECM "
 
 library(dplyr)
 library(plotme)
+library(plotly)
+library(palmerpenguins)
+
+# Create the plots
+fig_bioInk_simple <- bioInk_73 %>% 
+  count(typeGeneral_level1, level2) %>% 
+  plotme::count_to_sunburst()
+
+# Update the colors
+fig_bioInk_simple %>% 
+    style(fig_bioInk_simple, marker = list(colors = c("yellow","brown", "red", "green"))) 
 
 
-bioInk_count_simple <-  count(bioInk_73, 
-                       typeGeneral_level1, 
-                       level2
-                       # , level3
-                       #,study_ID
-                       )
+
+# bioInk_count_simple <-  count(bioInk_73, 
+#                        typeGeneral_level1, 
+#                        level2
+#                        # , level3
+#                        #,study_ID
+#                        )
 
 
 bioInk_count_suppl <-  count(bioInk_73, 
@@ -527,14 +539,14 @@ bioInk_count_suppl <-  count(bioInk_73,
                        #,study_ID
                        )
 
-# sunburst plot
-plotme::count_to_sunburst(bioInk_count_simple
-                          
-                          ,sort_by_n = TRUE 
-                          
-                          # ,fill_by_n = TRUE
-
-                                            )
+# # sunburst plot
+# plotme::count_to_sunburst(bioInk_count_simple
+#                           
+#                           ,sort_by_n = TRUE 
+#                           
+#                           # ,fill_by_n = TRUE
+# 
+#                                             )
 
 
 # link to raw function code: https://github.com/yogevherz/plotme/blob/master/R/count_to_sunburst_treemap.R 
