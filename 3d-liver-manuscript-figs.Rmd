@@ -519,8 +519,8 @@ fig_bioInk_simple <- bioInk_73 %>%
   plotme::count_to_sunburst()
 
 # Update the colors
-fig_bioInk_simple %>% 
-    style(fig_bioInk_simple, marker = list(colors = c("yellow","brown", "red", "green"))) 
+fig_simple_styled <- fig_bioInk_simple %>% 
+    style(fig_bioInk_simple, marker = list(colors = c("#a6611a","#dfc27d", "#80cdc1", "#018571"))) 
 
 
 
@@ -532,12 +532,19 @@ fig_bioInk_simple %>%
 #                        )
 
 
-bioInk_count_suppl <-  count(bioInk_73, 
+bioInk_count_suppl <-  bioInk_73 %>%  count(
                        typeGeneral_level1, 
                        level2
                         , level3
                        #,study_ID
-                       )
+                       )%>% 
+  plotme::count_to_sunburst()
+
+
+fig_suppl_styled <-  bioInk_count_suppl %>% 
+    style(bioInk_count_suppl, marker = list(colors = c("#a6611a","#dfc27d", "#80cdc1", "#018571"))) 
+
+
 
 # # sunburst plot
 # plotme::count_to_sunburst(bioInk_count_simple
