@@ -1,0 +1,511 @@
+---
+title: "3D Liver Bioprinting systematic scoping review"
+author: "Alexandra Bannach-Brown & Maren Hülsemann"
+date: "2023-10-23"
+output: 
+  html_document:
+    code_folding: hide
+    fig_width: 10
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(openxlsx)
+library(tidyverse)
+
+
+data <- openxlsx::read.xlsx("final_data_after_cleaning0803.xlsx", fillMergedCells = TRUE, colNames = FALSE)
+
+names(data) <- paste(data[1, ], data[2, ], sep = "_")
+names(data)[1] <- "study_ID"
+# Get rid of first two rows 
+data <- data[-c(1:2), ]
+
+# clean column names
+library(janitor)
+
+clean_names(data)
+# remove brackets so can search by numbers
+colnames(data) <-  gsub("\\(|)","",colnames(data))
+
+# ata$`2.2Â What is the main type of liver cells included?_9bea404f-a75c-401f-af5b-8fd020306538_Answer`
+
+## get only reconciled
+reconciled <- data %>% subset(data$`NOT to be answered by REVIEWER Has the study been reconciled?_cb623db2-5f5e-4676-9497-f22d4d58fd02_Answer` == "Yes") 
+
+# check the number of reconciled studies and confirm with project lead 
+nrow(reconciled)
+# 63
+length(unique(reconciled$study_ID))
+# 63 unique studies
+
+# make all columns factors
+cols <- colnames(reconciled[,21:170])
+reconciled[cols] <- lapply(reconciled[cols], factor)
+
+```
+
+
+
+### Figure 1c - Which printing methods are used which which bioink? 
+Interactive sankey diagram - hover over each section to see the number of experiments in each category. 
+```{r printer-bioink-sankey, warning=FALSE}
+library(plotly)
+
+#### prep data for sankey diagram
+# type --> 
+Print_bioink <- reconciled %>%select(
+  study_ID, 
+  `4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`,
+  `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+  `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+  `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+  `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+)  
+
+
+Print_bioink_re <- Print_bioink  %>% rename(
+  print_method = `4.1 What kind of printing method is used?_ae684e28-4f90-44ad-9de2-731d076de0b0_Answer`,
+  typeGeneral_level1 = `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+  typeNatural_level2 = `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+  typeSynthetic_level2 = `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  typeProtein_level3 = `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+  typePoly_level3 = `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+)
+
+
+#### needs to be 72 rows only!! - MH will supply which combo bioInk to Printer is correct from original study 
+# 487b3d85-d671-40f2-8d60-309a6aa9a4f3
+
+# Print_bioink_re <- within(Print_bioink_re, print_method[print_method == "Extrusion based|Stereolithography" & study_ID == '487b3d85-d671-40f2-8d60-309a6aa9a4f3'] <- 'John Smith1')
+
+Print_bioink_re$print_method <- as.character(Print_bioink_re$print_method)
+
+Print_bioink_re <- Print_bioink_re %>% mutate(print_method = ifelse(study_ID == '487b3d85-d671-40f2-8d60-309a6aa9a4f3', "Extrusion based", print_method))
+
+# Print_bioink_re[11, "print_method"] <- "Extrusion based"
+
+
+
+Print_bioink1_1 <- Print_bioink_re %>% 
+                separate_rows(print_method , sep="\\|")
+
+
+Print_bioink1_2 <- Print_bioink_re %>%
+             separate_rows(typeGeneral_level1, sep="\\|")
+
+Print_bioink1_2$print_method <- as.factor(Print_bioink1_2$print_method)
+Print_bioink1_2$typeGeneral_level1 <- as.factor(Print_bioink1_2$typeGeneral_level1 )
+  
+
+# 	487b3d85-d671-40f2-8d60-309a6aa9a4f3
+# extrusion was 
+# sterolithography
+
+
+
+# summary(Print_bioink1)
+
+Print_bioink1_sankey <- Print_bioink1_2 %>% select(study_ID, print_method, typeGeneral_level1)
+
+Print_bioink1_sankey
+
+
+# create a table of frequencies
+freq_table <- Print_bioink1_sankey %>% group_by(print_method, typeGeneral_level1) %>% 
+  summarise(n = n())
+
+freq_table <- freq_table %>% 
+   mutate(print_method= recode(print_method, "Extrusion based" = "Extrusion")) %>% 
+     mutate(print_method= recode(print_method, "Unclear" = "Unclear - Method")) %>% 
+  mutate(print_method= recode(print_method, "Inject based" = "Injection")) %>% 
+     mutate(typeGeneral_level1= recode(typeGeneral_level1, "Unclear" = "Unclear - Bioink"))
+
+
+# create a nodes data frame
+nodes <- data.frame(name = unique(c(as.character(freq_table$print_method),
+                                    as.character(freq_table$typeGeneral_level1))))
+
+
+# create links dataframe
+links <- data.frame(source = match(freq_table$print_method, nodes$name) - 1,
+                    target = match(freq_table$typeGeneral_level1, nodes$name) - 1,
+                    value = freq_table$n,
+                    stringsAsFactors = FALSE)
+
+
+
+# Make Sankey diagram
+plot_ly(
+  type = "sankey",
+  orientation = "h",
+  node = list(pad = 15,
+              thickness = 20,
+              line = list(color = "black", width = 0.5),
+              label = nodes$name),
+  link = list(source = links$source,
+              target = links$target,
+              value = links$value),
+  textfont = list(size = 18, color = "black"),
+  width = 820,
+  height = 580
+) %>%
+  layout(
+    #title = "Sankey Diagram: Print Method & Ink Type",
+         font = list(size = 18),
+         margin = list(t = 40, l = 10, r = 10, b = 10))
+
+
+```
+
+
+
+### Figure 2a - What bioinks were used?
+Interactive Sunburst plot - hover over each section to see the number of experiments in each category. 
+```{r bioink-sunburst}
+#### BIOINK sunburst 
+
+library(dplyr)
+
+# type --> 
+bioink <- reconciled %>% select(
+  study_ID, 
+    `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+    `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+    `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+`4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+  )  
+
+# reconciled$`4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`
+
+bioink <- bioink  %>% rename(typeGeneral_level1 = `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+   typeNatural_level2 = `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+  typeSynthetic_level2 = `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  typeProtein_level3 = `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+  typePoly_level3 = `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+)
+
+
+
+### other is Matrigel
+#################### update after discussion with experts on interpretation
+bioink_split1 <- separate_rows(bioink, typeGeneral_level1 , sep="\\|")
+
+### fill in NAs 
+# turn all cols to character
+bioInk_72 <- bioink_split1 %>%
+  mutate(across(everything(), as.character))
+
+bioInk_72 <- bioink_split1 %>%
+     mutate(
+typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), 
+typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), 
+typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
+typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA),
+
+#typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
+#typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
+# typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
+            )
+
+
+ ##### level 2 
+ bioInk_72$level2 <- apply(bioInk_72[, c("typeNatural_level2", "typeSynthetic_level2")], 1, 
+                           function(i){ paste(na.omit(i), collapse = " ") })
+
+ ##### level 3 
+ bioInk_72$level3 <- apply(bioInk_72[, c("typeProtein_level3", "typePoly_level3")], 1,
+                       function(i){ paste(na.omit(i), collapse = " ") })
+
+
+
+#### rename the columns 
+# rename answers to more easily group them
+bioInk_73 <- bioInk_72 %>%
+      mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>%
+      mutate(level3 = recode(level3, "Collagens;Gelatin" = "Collagen+Gelatin")) %>%
+      mutate(level3 = recode(level3, "Collagens|Collagens" = "Collagen")) %>%
+      mutate(level3 = recode(level3, "Gelatin|Gelatin" = "Gelatin")) %>%
+      mutate(level3 = recode(level3, "Gelatin;Silk-fibroin" = "Gelatin+Silk-fibroin")) %>%
+      mutate(level3 = recode(level3, "Gelatin;Fibrinogen" = "Gelatin+Fibrinogen")) %>%
+  
+  mutate(level3 = recode(level3, "Collagens;Gelatin Alginates" = "Collagen+Gelatin+Alginates")) %>%
+  mutate(level3 = recode(level3, "Alginates;Other" = "Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Gelatin Alginates" = "Gelatin+Alginates")) %>%
+  mutate(level3 = recode(level3, "Collagens Alginates" = "Collagen+Alginates")) %>%
+  mutate(level3 = recode(level3, "Fibrinogen Alginates" = "Fibrinogen+Alginates")) %>%
+  
+  mutate(level3 = recode(level3, "Gelatin Alginates;Other" = "Gelatin+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Fibrinogen;Other Alginates;Other" = "Fibrinogen+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Collagens|Collagens Hyaluronic acid|Hyaluronic acid" = "Collagen+Hyaluronic acid")) %>%
+  mutate(level3 = recode(level3, "Gelatin;Other Alginates" = "Gelatin+Alginates+Other")) %>%
+  
+  mutate(level3 = recode(level3, "Gelatin;Other Alginates;Other" = "Gelatin+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Gelatin Chitosan" = "Gelatin+Chitosan")) %>%
+  mutate(level3 = recode(level3, "Gelatin Hyaluronic acid" = "Gelatin+Hyaluronic acid")) %>%
+      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG")) %>% 
+      mutate(level2 = recode(level2, "Protein based" = "Protein")) %>% 
+      mutate(level2 = recode(level2, "Polysaccharide based" = "Poly")) %>% 
+      mutate(level2 = recode(level2, "dECM based" = "dECM")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based" = "Protein+Poly")) %>% 
+mutate(level2 = recode(level2, "Protein based;dECM based" = "Protein+dECM")) %>% 
+mutate(level2 = recode(level2, "Polysaccharide based;dECM based" = "Poly+dECM")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based;Other" = "Protein+Poly+MatriGel")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based;dECM based" = "Protein+Poly+dECM")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based|Protein based;Polysaccharide based" = "Protein+Poly")) %>% 
+      mutate(level2 = recode(level2, "Protein based|Protein based" = "Protein")) %>% 
+      mutate(typeGeneral_level1 = recode(typeGeneral_level1, "Not reported" = "NR")        
+             )
+  
+#  Protein based|dECM based
+# which(bioInk_72$level2 == "Protein based|dECM based")
+
+# bioInk_72[13, "level2"] <- "Protein based"
+# bioInk_72[14, "level2"] <- "dECM based"
+
+
+bioInk_73[30, "level2"] <- "Protein"
+bioInk_73[31, "level2"] <- "dECM "
+
+
+# other in "not reported" should be removed
+
+#### START PLOTTING
+
+library(dplyr)
+library(plotme)
+library(plotly)
+library(palmerpenguins)
+
+# Create the plots
+fig_bioInk_simple <- bioInk_73 %>% 
+  count(typeGeneral_level1, level2) %>% 
+  plotme::count_to_sunburst()
+
+# Update the colors
+fig_bioInk_simple %>% 
+    plotly::style(marker = list(colors = c("#a6611a","#dfc27d", "#80cdc1", "#018571"))) 
+
+
+
+bioInk_count_suppl <-  bioInk_73 %>%  count(
+                       typeGeneral_level1, 
+                       level2
+                        , level3
+                       #,study_ID
+                       )%>% 
+  plotme::count_to_sunburst()
+
+
+
+bioInk_count_suppl %>% 
+    plotly::style(marker = list(colors = c("#a6611a","#dfc27d", "#80cdc1", "#018571"))) 
+
+
+
+# bioInk_count_simple <-  count(bioInk_73, 
+#                        typeGeneral_level1, 
+#                        level2
+#                        # , level3
+#                        #,study_ID
+#                        )
+
+# # sunburst plot
+# plotme::count_to_sunburst(bioInk_count_simple
+#                           
+#                           ,sort_by_n = TRUE 
+#                           
+#                           # ,fill_by_n = TRUE
+# 
+#                                             )
+
+# link to raw function code: https://github.com/yogevherz/plotme/blob/master/R/count_to_sunburst_treemap.R 
+
+# plotme::count_to_sunburst(bioInk_count_suppl
+#                           
+#                           ,sort_by_n = TRUE 
+#                           
+#                           # ,fill_by_n = TRUE
+#                           )
+
+
+
+```
+
+### Figure 2a - version2 - What bioinks were used?
+Interactive Sunburst plot - hover over each section to see the number of experiments in each category. 
+```{r bioink-sunburst-v2}
+#### BIOINK sunburst 
+
+library(dplyr)
+
+# type --> 
+bioink <- reconciled %>% select(
+  study_ID, 
+    `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+    `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+    `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+`4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+  )  
+
+# reconciled$`4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`
+
+bioink <- bioink  %>% rename(typeGeneral_level1 = `4.1.3 What type of bioink was used?_92421414-c597-4e9c-b720-9bb4318b5483_Answer`, 
+   typeNatural_level2 = `4.1.3.1.1 If natural bioink, please choose the type._66b761ad-6630-4323-b423-c848a717aae4_Answer`, 
+  typeSynthetic_level2 = `4.1.3.1.4Â If Synthetic bioink: choose the type _e74ea0e0-a654-4ae2-b59e-2e0b14a4651a_Answer`, 
+  typeProtein_level3 = `4.1.3.1.2Â If Protein based: choose the type._621671b3-9f7e-4a22-80ac-14b02fdd0683_Answer`, 
+  typePoly_level3 = `4.1.3.1.3 If Polysaccharides Based: choose the type. _fcea8bcb-da6c-4154-aa44-8ff4734fa4fe_Answer`
+)
+
+
+
+### other is Matrigel
+#################### update after discussion with experts on interpretation
+bioink_split1 <- separate_rows(bioink, typeGeneral_level1 , sep="\\|")
+
+### fill in NAs 
+# turn all cols to character
+bioInk_72 <- bioink_split1 %>%
+  mutate(across(everything(), as.character))
+
+bioInk_72 <- bioink_split1 %>%
+     mutate(
+typeNatural_level2 = replace(typeNatural_level2, typeGeneral_level1!="Natural", NA), 
+typeSynthetic_level2 = replace(typeSynthetic_level2, typeGeneral_level1!="Synthetic", NA), 
+typeProtein_level3 = replace(typeProtein_level3, typeGeneral_level1!="Natural", NA), 
+typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA),
+
+#typePoly_level3 =  replace(typePoly_level3, typeNatural_level2!="Polysaccharide based", NA), 
+#typeProtein_level3 = replace(typeProtein_level3, typeNatural_level2!="Protein based", NA), 
+# typePoly_level3 =  replace(typePoly_level3, typeGeneral_level1!="Natural", NA)
+            )
+
+
+ ##### level 2 
+ bioInk_72$level2 <- apply(bioInk_72[, c("typeNatural_level2", "typeSynthetic_level2")], 1, 
+                           function(i){ paste(na.omit(i), collapse = " ") })
+
+ ##### level 3 
+ bioInk_72$level3 <- apply(bioInk_72[, c("typeProtein_level3", "typePoly_level3")], 1,
+                       function(i){ paste(na.omit(i), collapse = " ") })
+
+
+
+#### rename the columns 
+# rename answers to more easily group them
+bioInk_73 <- bioInk_72 %>%
+      mutate(level3 = recode(level3, "Collagens" = "Collagen")) %>%
+      mutate(level3 = recode(level3, "Collagens;Gelatin" = "Collagen+Gelatin")) %>%
+      mutate(level3 = recode(level3, "Collagens|Collagens" = "Collagen")) %>%
+      mutate(level3 = recode(level3, "Gelatin|Gelatin" = "Gelatin")) %>%
+      mutate(level3 = recode(level3, "Gelatin;Silk-fibroin" = "Gelatin+Silk-fibroin")) %>%
+      mutate(level3 = recode(level3, "Gelatin;Fibrinogen" = "Gelatin+Fibrinogen")) %>%
+  
+  mutate(level3 = recode(level3, "Collagens;Gelatin Alginates" = "Collagen+Gelatin+Alginates")) %>%
+  mutate(level3 = recode(level3, "Alginates;Other" = "Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Gelatin Alginates" = "Gelatin+Alginates")) %>%
+  mutate(level3 = recode(level3, "Collagens Alginates" = "Collagen+Alginates")) %>%
+  mutate(level3 = recode(level3, "Fibrinogen Alginates" = "Fibrinogen+Alginates")) %>%
+  
+  mutate(level3 = recode(level3, "Gelatin Alginates;Other" = "Gelatin+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Fibrinogen;Other Alginates;Other" = "Fibrinogen+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Collagens|Collagens Hyaluronic acid|Hyaluronic acid" = "Collagen+Hyaluronic acid")) %>%
+  mutate(level3 = recode(level3, "Gelatin;Other Alginates" = "Gelatin+Alginates+Other")) %>%
+  
+  mutate(level3 = recode(level3, "Gelatin;Other Alginates;Other" = "Gelatin+Alginates+Other")) %>%
+  mutate(level3 = recode(level3, "Gelatin Chitosan" = "Gelatin+Chitosan")) %>%
+  mutate(level3 = recode(level3, "Gelatin Hyaluronic acid" = "Gelatin+Hyaluronic acid")) %>%
+      mutate(level2 = recode(level2, "Poly ethylene glycol (PEG)" = "PEG")) %>% 
+      mutate(level2 = recode(level2, "Protein based" = "Protein")) %>% 
+      mutate(level2 = recode(level2, "Polysaccharide based" = "Polysaccharide")) %>% 
+      mutate(level2 = recode(level2, "dECM based" = "dECM")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based" = "Protein+Polysaccharide")) %>% 
+mutate(level2 = recode(level2, "Protein based;dECM based" = "Protein+dECM")) %>% 
+mutate(level2 = recode(level2, "Polysaccharide based;dECM based" = "Polysaccharide+dECM")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based;Other" = "Protein+Polysaccharide+MatriGel")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based;dECM based" = "Protein+Polysaccharide+dECM")) %>% 
+      mutate(level2 = recode(level2, "Protein based;Polysaccharide based|Protein based;Polysaccharide based" = "Protein+Polysaccharide")) %>% 
+      mutate(level2 = recode(level2, "Protein based|Protein based" = "Protein")) %>% 
+      mutate(typeGeneral_level1 = recode(typeGeneral_level1, "Not reported" = "NR")        
+             )
+  
+#  Protein based|dECM based
+# which(bioInk_72$level2 == "Protein based|dECM based")
+
+# bioInk_72[13, "level2"] <- "Protein based"
+# bioInk_72[14, "level2"] <- "dECM based"
+
+
+bioInk_73[30, "level2"] <- "Protein"
+bioInk_73[31, "level2"] <- "dECM "
+
+
+# other in "not reported" should be removed
+
+#### START PLOTTING
+
+library(dplyr)
+library(plotme)
+library(plotly)
+library(palmerpenguins)
+
+# Create the plots
+fig_bioInk_simple <- bioInk_73 %>% 
+  count(typeGeneral_level1, level2) %>% 
+  plotme::count_to_sunburst()
+
+# Update the colors
+fig_bioInk_simple %>% 
+    plotly::style(marker = list(colors = c("#a6611a","#dfc27d", "#80cdc1", "#018571"))) 
+
+
+
+bioInk_count_suppl <-  bioInk_73 %>%  count(
+                       typeGeneral_level1, 
+                       level2
+                        , level3
+                       #,study_ID
+                       )%>% 
+  plotme::count_to_sunburst()
+
+
+
+bioInk_count_suppl %>% 
+    plotly::style(marker = list(colors = c("#a6611a","#dfc27d", "#80cdc1", "#018571"))) 
+
+
+
+# bioInk_count_simple <-  count(bioInk_73, 
+#                        typeGeneral_level1, 
+#                        level2
+#                        # , level3
+#                        #,study_ID
+#                        )
+
+# # sunburst plot
+# plotme::count_to_sunburst(bioInk_count_simple
+#                           
+#                           ,sort_by_n = TRUE 
+#                           
+#                           # ,fill_by_n = TRUE
+# 
+#                                             )
+
+# link to raw function code: https://github.com/yogevherz/plotme/blob/master/R/count_to_sunburst_treemap.R 
+
+# plotme::count_to_sunburst(bioInk_count_suppl
+#                           
+#                           ,sort_by_n = TRUE 
+#                           
+#                           # ,fill_by_n = TRUE
+#                           )
+
+
+
+```

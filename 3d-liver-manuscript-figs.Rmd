@@ -792,7 +792,7 @@ formattable(nonParanchymal_count,
 
 
 ### Figure 3d - What Meta-data was provided for the Liver Cells? 
-```{r LiverCell-meta}
+```{r LiverCell-meta, echo=FALSE }
 liverCell_meta <- reconciled %>% mutate(`2.4 Which kind of meta data is available for the used liver cells?_2868ee50-2c4c-47e8-a040-427e4f882632_Answer` = recode(`2.4 Which kind of meta data is available for the used liver cells?_2868ee50-2c4c-47e8-a040-427e4f882632_Answer`, "Common cell line;None" = "Common cell line"))
 
 liverMetaData <- separate_rows(liverCell_meta, `2.4 Which kind of meta data is available for the used liver cells?_2868ee50-2c4c-47e8-a040-427e4f882632_Answer` ,sep=";")
@@ -809,7 +809,7 @@ t10 <- table(countsMetaDat$n_unique)
 # 56  2  5 
 
 
-hist(countsMetaDat$n_unique, xlab = "Number of Meta-Data Items Reported", ylab = "Number of Papers", main = "Meta-Data Items about the Cell Lines Peformed per Paper", breaks = 3)
+# hist(countsMetaDat$n_unique, xlab = "Number of Meta-Data Items Reported", ylab = "Number of Papers", main = "Meta-Data Items about the Cell Lines Peformed per Paper", breaks = 3)
 
 ## convert to facotrs to display barplot
  countsMetaDat$n_unique <- as.factor(countsMetaDat$n_unique)
@@ -1146,18 +1146,18 @@ liverCytochome_only <- tibble(
 liverCytochome_only <- separate_rows(liverCytochome_only, cytochrome, sep="\\|")
 liverCytochome_only <- separate_rows(liverCytochome_only, cytochrome, sep=";")
 
+liverCytochome_only_1 <- liverCytochome_only %>% 
+  mutate(cytochrome = recode(cytochrome, "YP2C" = "CYP2C"))%>% 
+  mutate(cytochrome = recode(cytochrome, "CYP1A2" = "CYP1A"))
 
-liverCytochome_only_count <- liverCytochome_only %>%  group_by(cytochrome) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
+# liverCytochome_only_1$cytochrome <- as.factor(liverCytochome_only_1$cytochrome)
+
+liverCytochome_only_count <- liverCytochome_only_1 %>%  group_by(cytochrome) %>% summarise(n_unique = length(unique(study_ID))) %>%  arrange(desc(n_unique))
 
 
 # remove NAs as they dont make sense
 liverCytochome_only_count <- liverCytochome_only_count %>%  
                     drop_na(cytochrome)
-
-liverCytochome_only_count$cytochrome
-
-liverCytochome_only_count <- liverCytochome_only_count %>% 
-  mutate(cytochrome = recode(cytochrome, "YP2C" = "CYP2C"))
 
 
 names(liverCytochome_only_count) <- c("Liver Cytochrome Type", "Number of Unique Studies")
@@ -1264,12 +1264,13 @@ library(formattable)
 
 customPurple = "#a6cee3"
 
-formattable(agonists_count,
-            align =c("l", "r"),
-            list(`Indicator Name` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold")), 
-              "Number of Unique Studies"= color_bar(customPurple)
-))
+# formattable(agonists_count,
+#             align =c("l", "r"),
+#             list(`Indicator Name` = formatter(
+#               "span", style = ~ style(color = "grey",font.weight = "bold")), 
+#               "Number of Unique Studies"= color_bar(customPurple)
+# ))
+
 
 
 table(agonists$agonistsComment)
@@ -1280,6 +1281,7 @@ agonists <- agonists %>%
 mutate(agonistsComment = recode(agonistsComment, "rifampicin" = "Rifampicin")) %>% 
 mutate(agonistsComment = recode(agonistsComment, "Rifampicin " = "Rifampicin")) %>%   
   mutate(agonistsComment = recode(agonistsComment, "phenobarbital" = "Phenobarbital")) %>%
+  mutate(agonistsComment = recode(agonistsComment, "Acetaminophen" = NA)) %>%
 subset(study_ID != "0a2dc2f4-21ea-4770-bdf8-999c5be9a300")
 
  
